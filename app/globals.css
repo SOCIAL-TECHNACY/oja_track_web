@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * OjaTrack Design System v1.0 — tokens extracted from Figma
+ * Canvas 01 - Design System (5:2) + theme-documentation (39:3409)
+ * Source of truth: swatch fills. Note: Figma hex labels for
+ * Primary/Success Green read #00E676 while fills are #00C853 —
+ * fill is used as `brand-primary`, label as `brand-hover`.
+ */
+
+:root {
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --surface: #f8fafb;
+  --surface-alt: #f5f7f5;
+  --secondary-text: #6b7280;
+  --border: #e5e7eb;
+}
+
+.dark {
+  --background: #07100c;
+  --foreground: #f5f7f5;
+  --surface: #0d1712;
+  --surface-alt: #132019;
+  --secondary-text: #9ca3af;
+  --border: #1e3a2b;
+}
+
+@theme {
+  /* Brand accent */
+  --color-brand-primary: #00c853;
+  --color-brand-hover: #00e676;
+  --color-brand-soft: #b8f7d2;
+  --color-brand-gold: #d6a84f;
+  --color-brand-deep: #0a3d2a;
+  --color-brand-soft-hover: #b8f7d2;
+
+  /* Foundation surfaces (dark-first) */
+  --color-foundation-base: #07100c;
+  --color-foundation-secondary: #0d1712;
+  --color-foundation-elevated: #132019;
+
+  /* Dark-first text */
+  --color-ink-primary: #f5f7f6;
+  --color-ink-secondary: #9aa7a0;
+  --color-ink-muted: #6f7b74;
+
+  /* Light text */
+  --color-light-primary: #1a1a1a;
+  --color-light-secondary: #6b7280;
+  --color-light-muted: #9ca3af;
+
+  /* Semantic triggers */
+  --color-success: #00c853;
+  --color-success-strong: #0fa652;
+  --color-success-hover: #0d8c45;
+  --color-success-pressed: #0a7338;
+  --color-success-disabled-bg: #cce5d9;
+  --color-success-disabled-text: #99b2a6;
+  --color-warning: #f5b942;
+  --color-warning-strong: #ffb800;
+  --color-warning-hover: #e5a600;
+  --color-warning-pressed: #cc9400;
+  --color-warning-disabled-bg: #f5edd9;
+  --color-warning-disabled-text: #bfb8a6;
+  --color-danger: #ef4444;
+  --color-danger-hover: #ff5c5c;
+  --color-info: #3b82f6;
+
+  /* Theme-aware (switch via :root / .dark above) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@theme inline {
+  --color-secondary-text: var(--secondary-text);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
