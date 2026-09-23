@@ -37,6 +37,8 @@ export default function DashboardShell({
   homeLabel,
   navAriaLabel,
   title,
+  variant = "agent",
+  eyebrow,
   children,
 }: {
   navItems: DashboardNavItem[];
@@ -48,6 +50,8 @@ export default function DashboardShell({
   navAriaLabel?: string;
   /** Explicit override — otherwise resolved from the active nav item. */
   title?: string;
+  variant?: "agent" | "admin";
+  eyebrow?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -85,6 +89,7 @@ export default function DashboardShell({
           homeLabel={homeLabel}
           navAriaLabel={navAriaLabel}
           active={active}
+          eyebrow={eyebrow}
         />
       </aside>
 
@@ -109,13 +114,18 @@ export default function DashboardShell({
               navAriaLabel={navAriaLabel}
               active={active}
               onNavigate={close}
+              eyebrow={eyebrow}
             />
           </aside>
         </div>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <DashboardHeader title={resolvedTitle} onMenuClick={() => setOpen(true)} />
+        <DashboardHeader
+          title={resolvedTitle}
+          onMenuClick={() => setOpen(true)}
+          variant={variant}
+        />
         <div className="flex-1">{children}</div>
       </div>
     </div>

@@ -4,19 +4,19 @@ import type { DashboardNavItem } from "./types";
 /*
  * Admin dashboard navigation + header titles.
  * Passed into the shared `DashboardShell` by `app/dashboard/admin/layout.tsx`.
- * Home is the network-wide agents leaderboard, so there is no separate
- * Leaderboard item — Overview points at it.
+ * Super-admin IA (Operational Command Center) — intentionally distinct
+ * from the agent IA. Do not mirror agentNav here.
  */
 
 export const adminHomeHref = "/dashboard/admin";
 
 export const adminNavItems: DashboardNavItem[] = [
   {
-    label: "Overview",
+    label: "Dashboard",
     href: "/dashboard/admin",
     icon: iconWrap(
       <path
-        d="M3 10.5 10 3.5l7 7V16a1 1 0 0 1-1 1h-4.5v-4.5h-3V17H4a1 1 0 0 1-1-1v-5.5Z"
+        d="M3 3.5h4.5v4.5H3v-4.5ZM12.5 3.5H17V8h-4.5V3.5ZM3 12.5h4.5V17H3v-4.5ZM12.5 12.5H17V17h-4.5v-4.5Z"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinejoin="round"
@@ -72,40 +72,89 @@ export const adminNavItems: DashboardNavItem[] = [
     ),
   },
   {
-    label: "Renewals",
-    href: "/dashboard/admin/renewals",
-    icon: iconWrap(
-      <path
-        d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6M16.5 3.5v3h-3"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />,
-    ),
-  },
-  {
-    label: "Payouts",
-    href: "/dashboard/admin/payouts",
+    label: "Subscriptions",
+    href: "/dashboard/admin/subscriptions",
     icon: iconWrap(
       <>
         <rect
           x="2.5"
-          y="5.5"
+          y="3.5"
           width="15"
-          height="9"
+          height="13"
           rx="1.5"
           stroke="currentColor"
           strokeWidth="1.5"
         />
-        <circle cx="10" cy="10" r="2" stroke="currentColor" strokeWidth="1.5" />
         <path
-          d="M6 8.5h.01M14 12.5h.01"
+          d="M2.5 7.5h15M7 11h6"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </>,
+    ),
+  },
+  {
+    label: "Commissions",
+    href: "/dashboard/admin/commissions",
+    icon: iconWrap(
+      <>
+        <circle cx="7" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+        <circle cx="13.5" cy="13" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+        <path
+          d="M6 9.5h.01M12.5 15.5h.01"
           stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"
         />
       </>,
+    ),
+  },
+  {
+    label: "Withdrawals",
+    href: "/dashboard/admin/withdrawals",
+    icon: iconWrap(
+      <>
+        <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5" />
+        <path
+          d="M10 6.5v7M7.5 10h5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </>,
+    ),
+  },
+  {
+    label: "Reports",
+    href: "/dashboard/admin/reports",
+    icon: iconWrap(
+      <>
+        <path
+          d="M5 3.5h7l3 3v10H5v-13Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12 3.5v3h3M8 11.5h4M8 14h4"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </>,
+    ),
+  },
+  {
+    label: "System",
+    href: "/dashboard/admin/system",
+    icon: iconWrap(
+      <path
+        d="M10 2.5 3 5.5v5c0 4 3 6.8 7 7.5 4-.7 7-3.5 7-7.5v-5l-7-3Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />,
     ),
   },
   {
@@ -133,10 +182,13 @@ export const adminNavItems: DashboardNavItem[] = [
 ];
 
 export const adminTitles: Record<string, string> = {
-  Overview: "Agent Leaderboard",
-  Agents: "Agents",
-  Shops: "Shops",
-  Renewals: "Renewals",
-  Payouts: "Payouts",
-  Settings: "Settings",
+  Dashboard: "Operational Command Center",
+  Agents: "Agent Control Center",
+  Shops: "Supervised Retail Locations",
+  Subscriptions: "Subscription Management",
+  Commissions: "Field Force Comm Engine",
+  Withdrawals: "Withdrawal Clearance Terminal",
+  Reports: "Analytics & Reports Hub",
+  System: "System Diagnostics",
+  Settings: "System Configuration",
 };

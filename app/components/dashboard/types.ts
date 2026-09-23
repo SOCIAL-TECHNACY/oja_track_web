@@ -16,4 +16,6 @@ export interface DashboardUser {
   name: string;
   code: string;
   initials: string;
+  /** Optional role line under the name (e.g. admin "Managing Partner"). */
+  role?: string;
 }

@@ -16,10 +16,12 @@ export default function AdminDashboardLayout({
       navItems={adminNavItems}
       user={mockAdminUser}
       titles={adminTitles}
-      defaultTitle="Agent Leaderboard"
+      defaultTitle="Operational Command Center"
       homeHref={adminHomeHref}
       homeLabel="OjaTrack admin dashboard home"
       navAriaLabel="Admin"
+      variant="admin"
+      eyebrow="Super Admin"
     >
       {children}
     </DashboardShell>

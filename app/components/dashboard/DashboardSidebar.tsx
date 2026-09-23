@@ -15,6 +15,7 @@ export default function DashboardSidebar({
   navAriaLabel = "Dashboard",
   active,
   onNavigate,
+  eyebrow,
 }: {
   navItems: DashboardNavItem[];
   user: DashboardUser;
@@ -23,6 +24,7 @@ export default function DashboardSidebar({
   navAriaLabel?: string;
   active?: string;
   onNavigate?: () => void;
+  eyebrow?: string;
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -38,8 +40,15 @@ export default function DashboardSidebar({
           >
             O
           </span>
-          <span className="text-lg font-extrabold tracking-tight text-light-primary dark:text-ink-primary">
-            OjaTrack
+          <span className="leading-none">
+            <span className="block text-lg font-extrabold tracking-tight text-light-primary dark:text-ink-primary">
+              OJA-Track
+            </span>
+            {eyebrow ? (
+              <span className="mt-0.5 block text-[11px] font-bold tracking-[0.14em] text-brand-primary uppercase">
+                {eyebrow}
+              </span>
+            ) : null}
           </span>
         </Link>
       </div>
@@ -53,12 +62,18 @@ export default function DashboardSidebar({
               href={item.href}
               aria-current={isActive ? "page" : undefined}
               onClick={onNavigate}
-              className={`flex h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors ${
+              className={`relative flex h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors ${
                 isActive
                   ? "bg-[#e6f4ea] font-semibold text-light-primary dark:bg-brand-primary/15 dark:text-brand-hover"
                   : "font-normal text-light-secondary hover:bg-surface hover:text-light-primary dark:text-ink-secondary dark:hover:bg-foundation-elevated dark:hover:text-ink-primary"
               }`}
             >
+              {isActive ? (
+                <span
+                  aria-hidden
+                  className="absolute top-1/2 right-2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand-primary"
+                />
+              ) : null}
               <span aria-hidden className={isActive ? "" : "opacity-80"}>
                 {item.icon}
               </span>
@@ -80,7 +95,9 @@ export default function DashboardSidebar({
             <p className="truncate text-sm font-semibold text-light-primary dark:text-ink-primary">
               {user.name}
             </p>
-            <p className="text-xs text-light-muted">{user.code}</p>
+            <p className="truncate text-xs text-light-muted">
+              {user.role ?? user.code}
+            </p>
           </div>
         </div>
       </div>
