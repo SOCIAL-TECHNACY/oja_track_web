@@ -6,16 +6,26 @@ import Button from "./Button";
  * Three patterns: metric, data (record), action.
  */
 const shell =
-  "w-full max-w-[328px] rounded-2xl border border-border bg-white p-5 dark:bg-foundation-secondary dark:border-[#1e3a2b]";
+  "w-full rounded-2xl border border-border bg-white p-5 dark:bg-foundation-secondary dark:border-[#1e3a2b]";
 
-export function MetricCard() {
+export function MetricCard({
+  label = "Weekly Fleet Earnings",
+  value = "₦12,845.00",
+  change = "+14.2% vs last week",
+  positive = true,
+}: {
+  label?: string;
+  value?: string;
+  change?: string;
+  positive?: boolean;
+}) {
   return (
     <div className={shell}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-light-secondary">
-          Weekly Fleet Earnings
+        <p className="text-xs font-bold text-light-secondary dark:text-ink-secondary">
+          {label}
         </p>
-        <span aria-hidden className="text-brand-primary">
+        <span aria-hidden className={positive ? "text-brand-primary" : "text-danger"}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path
               d="M2 12.5 6 8.5l3 3 5-6.5"
@@ -27,13 +37,16 @@ export function MetricCard() {
           </svg>
         </span>
       </div>
-      <p className="mt-3 text-[32px] leading-none font-bold text-light-primary dark:text-ink-primary">
-        $12,845.00
+      <p className="mt-3 text-2xl sm:text-[28px] leading-tight font-extrabold text-light-primary dark:text-ink-primary">
+        {value}
       </p>
-      <p className="mt-2 text-xs">
-        <span className="font-semibold text-brand-primary">+14.2%</span>{" "}
-        <span className="text-light-muted">vs last week</span>
-      </p>
+      {change && (
+        <p className="mt-2 text-xs">
+          <span className={`font-semibold ${positive ? "text-brand-primary" : "text-danger"}`}>
+            {change}
+          </span>
+        </p>
+      )}
     </div>
   );
 }
@@ -48,20 +61,20 @@ export function DataCard() {
     <div className={shell}>
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-light-primary dark:text-ink-primary">
-          Lagos Hub Dispatch
+          Dispatch Route 04
         </p>
         <Badge status="active" />
       </div>
-      <dl className="mt-4 space-y-2.5">
-        {rows.map(([k, v]) => (
-          <div key={k} className="flex items-center justify-between text-xs">
-            <dt className="text-light-secondary">{k}</dt>
-            <dd className="font-semibold text-light-primary dark:text-ink-primary">
-              {v}
-            </dd>
+      <div className="mt-3 divide-y divide-border text-xs dark:divide-[#1e3a2b]">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex justify-between py-2">
+            <span className="text-light-muted">{label}</span>
+            <span className="font-semibold text-light-primary dark:text-ink-primary">
+              {value}
+            </span>
           </div>
         ))}
-      </dl>
+      </div>
     </div>
   );
 }
@@ -69,14 +82,17 @@ export function DataCard() {
 export function ActionCard() {
   return (
     <div className={shell}>
-      <p className="text-base font-bold text-light-primary dark:text-ink-primary">
-        Route Optimization Tool
+      <p className="text-sm font-bold text-light-primary dark:text-ink-primary">
+        Daily Reconciliation Required
       </p>
-      <p className="mt-1 text-[13px] leading-5 text-light-secondary">
-        Recalculate route coordinates to save estimated time of arrival (ETA) on
-        deliveries.
+      <p className="mt-2 text-xs leading-relaxed text-light-secondary dark:text-ink-secondary">
+        3 pending cash handovers need manager confirmation before close of
+        business.
       </p>
-      <Button className="mt-4 w-full min-w-0">Launch Optimizer</Button>
+      <div className="mt-4 flex gap-2">
+        <Button variant="primary">Review now</Button>
+        <Button variant="ghost">Dismiss</Button>
+      </div>
     </div>
   );
 }

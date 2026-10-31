@@ -3,7 +3,9 @@ export type BadgeStatus =
   | "expired"
   | "expiring"
   | "pending"
-  | "processing";
+  | "processing"
+  | "success"
+  | "warning";
 
 /*
  * Figma: section-badges (10:3872) — pill (9999), 27px high, 12px bold.
@@ -15,11 +17,19 @@ const styles: Record<BadgeStatus, { pill: string; dot: string }> = {
     pill: "bg-brand-primary/10 text-success-strong dark:bg-brand-primary/15 dark:text-brand-hover",
     dot: "bg-success-strong dark:bg-brand-hover",
   },
+  success: {
+    pill: "bg-brand-primary/10 text-success-strong dark:bg-brand-primary/15 dark:text-brand-hover",
+    dot: "bg-success-strong dark:bg-brand-hover",
+  },
   expired: {
     pill: "bg-danger/10 text-danger dark:bg-danger/15",
     dot: "bg-danger",
   },
   expiring: {
+    pill: "bg-warning/15 text-light-primary dark:text-warning",
+    dot: "bg-light-primary dark:bg-warning",
+  },
+  warning: {
     pill: "bg-warning/15 text-light-primary dark:text-warning",
     dot: "bg-light-primary dark:bg-warning",
   },
@@ -35,8 +45,10 @@ const styles: Record<BadgeStatus, { pill: string; dot: string }> = {
 
 const labels: Record<BadgeStatus, string> = {
   active: "Active",
+  success: "Completed",
   expired: "Expired",
   expiring: "Expiring",
+  warning: "Warning",
   pending: "Pending",
   processing: "Processing",
 };
@@ -48,13 +60,13 @@ export default function Badge({
   status: BadgeStatus;
   children?: React.ReactNode;
 }) {
-  const s = styles[status];
+  const current = styles[status] || styles.pending;
   return (
     <span
-      className={`inline-flex h-[27px] items-center gap-1.5 rounded-full px-3 text-xs font-bold ${s.pill}`}
+      className={`inline-flex h-[27px] items-center gap-1.5 rounded-full px-3 text-xs font-bold leading-none ${current.pill}`}
     >
-      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
-      {children ?? labels[status]}
+      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${current.dot}`} />
+      <span>{children ?? labels[status] ?? "Status"}</span>
     </span>
   );
 }

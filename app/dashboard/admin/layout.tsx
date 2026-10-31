@@ -6,6 +6,12 @@ import {
 } from "../../components/dashboard/adminNav";
 import { mockAdminUser } from "@/lib/admin-dashboard";
 
+export const metadata = {
+  title: "Operational Command Center — OjaTrack Admin",
+  description:
+    "Network-wide shops, agents, revenue, renewals, and system health.",
+};
+
 export default function AdminDashboardLayout({
   children,
 }: {

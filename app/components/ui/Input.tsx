@@ -1,4 +1,6 @@
-import type { InputHTMLAttributes } from "react";
+"use client";
+
+import React, { useRef, type InputHTMLAttributes } from "react";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   error?: boolean;
@@ -71,21 +73,66 @@ export function SelectInput(props: InputProps) {
 
 export function PinInput({
   length = 4,
-  values = ["", "", "", ""],
+  value = "",
+  values,
+  onChange,
 }: {
   length?: number;
+  value?: string;
   values?: string[];
+  onChange?: (val: string) => void;
 }) {
+  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Support either single string or array of digits
+  const digits = value
+    ? value.split("").concat(Array(Math.max(0, length - value.length)).fill(""))
+    : values || Array(length).fill("");
+
+  const handleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const char = e.target.value.slice(-1);
+    const newDigits = [...digits];
+    newDigits[index] = char;
+    const combined = newDigits.join("").slice(0, length);
+    onChange?.(combined);
+
+    if (char && index < length - 1) {
+      inputsRef.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !digits[index] && index > 0) {
+      inputsRef.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").trim().slice(0, length);
+    if (pasted) {
+      onChange?.(pasted);
+      const focusIndex = Math.min(pasted.length, length - 1);
+      inputsRef.current[focusIndex]?.focus();
+    }
+  };
+
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-2 sm:gap-3 justify-center">
       {Array.from({ length }).map((_, i) => (
         <input
           key={i}
+          ref={(el) => {
+            inputsRef.current[i] = el;
+          }}
           aria-label={`PIN digit ${i + 1}`}
-          defaultValue={values[i] ?? ""}
+          value={digits[i] ?? ""}
+          onChange={(e) => handleChange(i, e)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={handlePaste}
           inputMode="numeric"
           maxLength={1}
-          className="h-14 w-14 rounded-lg border border-border bg-white text-center text-lg font-semibold text-light-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/30 dark:bg-foundation-secondary dark:text-ink-primary"
+          className="h-12 w-12 sm:h-14 sm:w-14 rounded-lg border border-border bg-white text-center text-lg font-bold text-light-primary outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/30 dark:bg-foundation-secondary dark:text-ink-primary"
         />
       ))}
     </div>

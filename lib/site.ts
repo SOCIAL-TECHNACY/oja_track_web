@@ -1,41 +1,40 @@
 /*
  * Front-page navigation contract.
- * `href: null` = target page doesn't exist yet → rendered non-navigating
- * (no 404s). Linking a page later = flip null to its path. No component edits.
+ * All destinations now link to active, fully implemented routes across
+ * the four OjaTrack platform surfaces.
  */
-export type NavLink = { label: string; href: string | null };
+export type NavLink = { label: string; href: string };
 
 export const mainNav: NavLink[] = [
-  { label: "Product", href: null },
   { label: "For Shop Owners", href: "/for-shop-owners" },
   { label: "For Agents", href: "/agents" },
   { label: "How It Works", href: "/how-it-works" },
-      { label: "Pricing", href: "/pricing" },
+  { label: "Pricing", href: "/pricing" },
 ];
 
 export const authNav: NavLink[] = [
-  { label: "Login", href: null },
-  { label: "Get Started", href: null },
+  { label: "Login", href: "/login" },
+  { label: "Get Started", href: "/shop/register" },
 ];
 
 export const footerCols: Array<{ title: string; links: NavLink[] }> = [
   {
     title: "Platform",
     links: [
-      { label: "Inventory Watch", href: null },
-      { label: "Point of Sale", href: null },
-      { label: "Agent Network", href: null },
-  { label: "Pricing", href: "/pricing" },
-      { label: "Admin Login", href: null },
+      { label: "Point of Sale (POS)", href: "/shop/sales" },
+      { label: "Inventory Watch", href: "/shop/inventory" },
+      { label: "Agent Portal", href: "/dashboard/agent" },
+      { label: "Pricing & Plans", href: "/pricing" },
+      { label: "Admin Gateway", href: "/admin/login" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About Us", href: "/about" },
-      { label: "Contact Us", href: "/contact" },
-      { label: "Become An Agent", href: null },
-      { label: "FAQ", href: "/faq" },
+      { label: "About OjaTrack", href: "/about" },
+      { label: "Contact & Support", href: "/contact" },
+      { label: "Become An Agent", href: "/agent/register" },
+      { label: "Frequently Asked Questions", href: "/faq" },
     ],
   },
   {

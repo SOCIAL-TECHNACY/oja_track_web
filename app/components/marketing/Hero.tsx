@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Button from "../ui/Button";
 
 /* CSS-only dashboard mockup mirroring the hero specimen. */
@@ -73,10 +74,14 @@ export default function Hero() {
           verified field agents.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <Button className="min-w-0 px-8">Get Started Free</Button>
-          <Button variant="secondary" className="min-w-0 px-8">
-            Watch Demo
-          </Button>
+          <Link href="/shop/register">
+            <Button className="min-w-0 px-8 font-bold">Get Started Free</Button>
+          </Link>
+          <Link href="/how-it-works">
+            <Button variant="secondary" className="min-w-0 px-8 font-semibold">
+              How It Works
+            </Button>
+          </Link>
         </div>
         <div className="mx-auto mt-10 max-w-4xl text-left">
           <DashboardMockup />
