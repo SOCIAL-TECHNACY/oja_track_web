@@ -6,7 +6,6 @@ import ShopInsightCard from "./ShopInsightCard";
 import { formatNGN } from "@/lib/agent-dashboard";
 import {
   formatCount,
-  mockShopTabCounts,
   shopInsightFor,
   type SupervisedShop,
   type SupervisedShopStatus,
@@ -16,8 +15,15 @@ const PAGE_SIZE = 8;
 
 type TabKey = "all" | "active" | "expiring" | "expired";
 
-const tabs: Array<{ key: TabKey; label: (counts: typeof mockShopTabCounts) => string }> = [
-  { key: "all", label: () => "All Shops" },
+interface TabCounts {
+  all: number;
+  active: number;
+  expiringSoon: number;
+  expired: number;
+}
+
+const tabs: Array<{ key: TabKey; label: (counts: TabCounts) => string }> = [
+  { key: "all", label: (c) => `All Shops (${formatCount(c.all)})` },
   { key: "active", label: (c) => `Active (${formatCount(c.active)})` },
   { key: "expiring", label: (c) => `Expiring Soon (${formatCount(c.expiringSoon)})` },
   { key: "expired", label: (c) => `Expired (${formatCount(c.expired)})` },
@@ -71,7 +77,7 @@ function FilterSelect({
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 cursor-pointer appearance-none rounded-lg border border-border bg-white pr-8 pl-2.5 text-[13px] whitespace-nowrap text-light-secondary outline-none transition-colors focus:border-brand-primary dark:bg-foundation-secondary dark:text-ink-secondary"
+        className="h-9 cursor-pointer appearance-none rounded-xl border border-border bg-white pr-8 pl-3 text-[13px] text-light-secondary outline-none transition-colors focus:border-brand-primary dark:bg-foundation-secondary dark:text-ink-secondary"
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>
@@ -81,11 +87,11 @@ function FilterSelect({
       </select>
       <span
         aria-hidden
-        className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-light-muted"
+        className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-light-muted"
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
           <path
-            d="m4 6 4 4 4-4"
+            d="M4 6L8 10L12 6"
             stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
@@ -98,10 +104,9 @@ function FilterSelect({
 }
 
 /*
- * Supervised retail locations island: tab bar on top, then a grid where
- * the toolbar + table stack (left) and the insight card (right) start
- * level with each other. Rows are selectable — clicking a shop drives
- * the Expanded Insight panel (selection survives filtering).
+ * Supervised Retail Operations island: status tabs + search/filters +
+ * interactive shop directory. Clicking any row binds the right-hand
+ * ShopInsightCard to that shop.
  */
 export default function SupervisedRetailView({
   shops,
@@ -111,34 +116,52 @@ export default function SupervisedRetailView({
   const [tab, setTab] = useState<TabKey>("all");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
-  const [location, setLocation] = useState("Nigeria");
+  const [location, setLocation] = useState("All");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(shops[0]?.id ?? "");
+
+  const counts: TabCounts = useMemo(() => {
+    let active = 0;
+    let expiringSoon = 0;
+    let expired = 0;
+    for (const s of shops) {
+      if (s.status === "ACTIVE") active++;
+      else if (s.status === "PENDING") expiringSoon++;
+      else if (s.status === "SUSPENDED") expired++;
+    }
+    return { all: shops.length, active, expiringSoon, expired };
+  }, [shops]);
 
   const selected = shops.find((s) => s.id === selectedId) ?? shops[0];
   const insight = selected ? shopInsightFor(selected) : null;
 
   const locations = useMemo(() => {
     const unique = Array.from(new Set(shops.map((s) => s.location))).sort();
-    return ["Nigeria", ...unique];
+    return ["All", ...unique];
   }, [shops]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return shops.filter(
-      (s) =>
-        tabMatches(s, tab) &&
-        (status === "All" ||
-          (status === "Active" && s.status === "ACTIVE") ||
-          (status === "Expiring" && s.status === "PENDING") ||
-          (status === "Expired" && s.status === "SUSPENDED")) &&
-        (location === "Nigeria" || s.location === location) &&
-        (q === "" ||
-          s.shopName.toLowerCase().includes(q) ||
-          s.owner.toLowerCase().includes(q) ||
-          s.agentCode.toLowerCase().includes(q)),
-    );
-  }, [shops, tab, status, location, query]);
+  const filtered = useMemo(
+    () =>
+      shops.filter((s) => {
+        if (!tabMatches(s, tab)) return false;
+        if (status !== "All") {
+          if (status === "Active" && s.status !== "ACTIVE") return false;
+          if (status === "Expiring" && s.status !== "PENDING") return false;
+          if (status === "Expired" && s.status !== "SUSPENDED") return false;
+        }
+        if (location !== "All" && s.location !== location) return false;
+        if (query.trim()) {
+          const q = query.toLowerCase();
+          return (
+            s.shopName.toLowerCase().includes(q) ||
+            s.owner.toLowerCase().includes(q) ||
+            s.agentCode.toLowerCase().includes(q)
+          );
+        }
+        return true;
+      }),
+    [shops, tab, status, location, query],
+  );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -146,27 +169,29 @@ export default function SupervisedRetailView({
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
+
   const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(safePage * PAGE_SIZE, filtered.length);
 
   const pageButton =
-    "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium transition-colors";
+    "inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-border px-2.5 text-xs font-medium transition-colors";
 
   return (
     <div className="space-y-4">
-      {/* Tab bar */}
+      {/* Top row: Tab strip */}
       <div
-        role="group"
-        aria-label="Shop status filter"
-        className="flex flex-wrap items-center gap-2"
+        role="tablist"
+        aria-label="Filter shops by status"
+        className="flex flex-wrap gap-2"
       >
         {tabs.map((t) => {
           const isActive = t.key === tab;
           return (
             <button
               key={t.key}
+              role="tab"
               type="button"
-              aria-pressed={isActive}
+              aria-selected={isActive}
               onClick={() => {
                 setTab(t.key);
                 setPage(1);
@@ -177,7 +202,7 @@ export default function SupervisedRetailView({
                   : "border-border font-normal text-light-secondary hover:text-light-primary dark:text-ink-secondary dark:hover:text-ink-primary"
               }`}
             >
-              {t.label(mockShopTabCounts)}
+              {t.label(counts)}
             </button>
           );
         })}
@@ -260,9 +285,7 @@ export default function SupervisedRetailView({
                       <button
                         type="button"
                         onClick={() => setSelectedId(shop.id)}
-                        aria-pressed={isSelected}
-                        aria-label={`Inspect ${shop.shopName}`}
-                        className="hover:underline"
+                        className="text-left font-bold text-light-primary hover:text-brand-primary dark:text-ink-primary"
                       >
                         {shop.shopName}
                       </button>
@@ -270,7 +293,7 @@ export default function SupervisedRetailView({
                     <td className="px-4 py-3 whitespace-nowrap text-light-secondary dark:text-ink-secondary">
                       {shop.owner}
                     </td>
-                    <td className="px-4 py-3 font-semibold whitespace-nowrap text-brand-gold tabular-nums">
+                    <td className="px-4 py-3 whitespace-nowrap font-medium text-brand-gold tabular-nums">
                       {shop.agentCode}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-light-secondary dark:text-ink-secondary">
@@ -291,7 +314,9 @@ export default function SupervisedRetailView({
                     colSpan={6}
                     className="px-6 py-10 text-center text-sm text-light-secondary dark:text-ink-secondary"
                   >
-                    No shops match your search.
+                    {shops.length === 0
+                      ? "No supervised retail shops registered on platform yet."
+                      : "No shops match your search criteria."}
                   </td>
                 </tr>
               )}

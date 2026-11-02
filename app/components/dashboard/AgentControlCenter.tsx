@@ -37,8 +37,7 @@ function AgentStatusPill({ status }: { status: VerifiedAgentStatus }) {
 
 /*
  * Agent Control Center island: verified directory (selectable rows) +
- * inspection panel bound to the selected agent. Mock-first; actions
- * wire up to the backend later.
+ * inspection panel bound to the selected agent.
  */
 export default function AgentControlCenter({
   agents,
@@ -73,7 +72,11 @@ export default function AgentControlCenter({
               <tr className="text-[13px] text-light-muted dark:text-ink-muted">
                 {["Agent ID", "Name", "Location", "Status", "Shops", "Total Earned"].map(
                   (h) => (
-                    <th key={h} scope="col" className="px-3 py-2 font-medium first:pl-1 last:pr-1">
+                    <th
+                      key={h}
+                      scope="col"
+                      className="border-b border-border px-3 py-3 font-medium first:pl-1 last:pr-1 dark:border-[#1e3a2b]"
+                    >
                       {h}
                     </th>
                   ),
@@ -87,16 +90,16 @@ export default function AgentControlCenter({
                   <tr
                     key={a.id}
                     onClick={() => setSelectedId(a.id)}
-                    className={`cursor-pointer border-t border-border transition-colors first:border-t-0 dark:border-[#1e3a2b] ${
-                      isSelected ? "bg-surface dark:bg-foundation-elevated" : "hover:bg-surface/60 dark:hover:bg-foundation-elevated/50"
+                    className={`cursor-pointer border-b border-border transition-colors last:border-0 dark:border-[#1e3a2b] ${
+                      isSelected
+                        ? "bg-surface dark:bg-foundation-elevated"
+                        : "hover:bg-surface/60 dark:hover:bg-foundation-elevated/50"
                     }`}
                   >
                     <td className="px-3 py-4 first:pl-1">
                       <button
                         type="button"
                         onClick={() => setSelectedId(a.id)}
-                        aria-pressed={isSelected}
-                        aria-label={`Inspect ${a.name} (${a.id})`}
                         className="font-semibold whitespace-nowrap text-brand-gold tabular-nums hover:underline"
                       >
                         {a.id}
@@ -123,6 +126,16 @@ export default function AgentControlCenter({
                   </tr>
                 );
               })}
+              {agents.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-12 text-center text-sm text-light-secondary dark:text-ink-secondary"
+                  >
+                    No verified agents registered on the platform yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -158,6 +171,14 @@ export default function AgentControlCenter({
             <dl className="mt-2 space-y-2 text-sm">
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-light-secondary dark:text-ink-secondary">
+                  Active Shops
+                </dt>
+                <dd className="font-bold text-light-primary tabular-nums dark:text-ink-primary">
+                  {selected.shopsActive} of {selected.shopsTotal}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-light-secondary dark:text-ink-secondary">
                   Commission Balance
                 </dt>
                 <dd className="font-bold text-light-primary tabular-nums dark:text-ink-primary">
@@ -166,15 +187,15 @@ export default function AgentControlCenter({
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-light-secondary dark:text-ink-secondary">
-                  Onboarded Retailers
+                  Lifetime Earned
                 </dt>
-                <dd className="font-bold text-light-primary tabular-nums dark:text-ink-primary">
-                  {selected.onboardedRetailers} Units
+                <dd className="font-bold text-brand-primary tabular-nums">
+                  {formatNGN(selected.totalEarnedNGN)}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-light-secondary dark:text-ink-secondary">
-                  Average Rating
+                  Field Rating
                 </dt>
                 <dd className="font-bold text-light-primary tabular-nums dark:text-ink-primary">
                   {selected.ratingOutOf5.toFixed(1)} / 5.0
@@ -204,7 +225,14 @@ export default function AgentControlCenter({
             </button>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div className={card} aria-live="polite">
+          <h2 className={titleCls}>Agent Inspection</h2>
+          <div className="py-12 text-center text-sm text-light-secondary dark:text-ink-secondary">
+            Select an agent from the directory to inspect field credentials and performance metrics.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

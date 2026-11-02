@@ -1,5 +1,4 @@
-import RenewalsList from "../../../components/dashboard/RenewalsList";
-import { mockShopRenewals } from "@/lib/agent-dashboard";
+import AgentRenewalsClient from "./AgentRenewalsClient";
 
 export const metadata = {
   title: "Manage Renewals — OjaTrack",
@@ -10,7 +9,7 @@ export const metadata = {
 export default function AgentRenewalsPage() {
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <RenewalsList renewals={mockShopRenewals} />
+      <AgentRenewalsClient />
     </main>
   );
 }

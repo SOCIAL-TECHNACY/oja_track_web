@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import {
-  CheckCircle2,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
   Mail,
-  MoreVertical,
   Plus,
+  RefreshCw,
   Shield,
   Trash2,
   UserCheck,
@@ -13,9 +15,11 @@ import {
   Users,
 } from "lucide-react";
 import { getStaffApi, inviteStaffApi, revokeStaffInvitationApi } from "@/lib/api/retail";
+import { Input } from "@/app/components/ui/Input";
 import Button from "@/app/components/ui/Button";
 import Badge from "@/app/components/ui/Badge";
-import { Input } from "@/app/components/ui/Input";
+import type { MembershipRole } from "@/types/auth";
+import { useAuth } from "@/lib/auth/auth-context";
 
 interface StaffMember {
   id: string;
@@ -23,8 +27,8 @@ interface StaffMember {
   role: string;
   status: string;
   user: {
-    firstName: string;
-    lastName: string;
+    firstName?: string;
+    lastName?: string;
     email: string;
     phone?: string;
   };
@@ -34,8 +38,10 @@ interface StaffMember {
 }
 
 export default function ShopStaffPage() {
+  const { user: authUser } = useAuth();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     email: "",
@@ -46,67 +52,28 @@ export default function ShopStaffPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const fallbackStaff: StaffMember[] = [
-    {
-      id: "m-1",
-      userId: "u-1",
-      role: "owner",
-      status: "active",
-      user: {
-        firstName: "Emeka",
-        lastName: "Okonkwo",
-        email: "emeka@okonkwo.ng",
-        phone: "+2348012345678",
-      },
-      branch: { name: "Main Branch" },
-    },
-    {
-      id: "m-2",
-      userId: "u-2",
-      role: "staff",
-      status: "active",
-      user: {
-        firstName: "Chinedu",
-        lastName: "Eze",
-        email: "chinedu@okonkwo.ng",
-        phone: "+2348088776655",
-      },
-      branch: { name: "Main Branch" },
-    },
-    {
-      id: "m-3",
-      userId: "u-3",
-      role: "staff",
-      status: "invited",
-      user: {
-        firstName: "Blessing",
-        lastName: "Nwosu",
-        email: "blessing@gmail.com",
-      },
-      branch: { name: "Main Branch" },
-    },
-  ];
+  const fetchStaff = async () => {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      const res = await getStaffApi();
+      if (res.success && res.staff) {
+        setStaffList(res.staff);
+      } else {
+        setStaffList([]);
+      }
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error ? err.message : "Failed to load team directory from server.";
+      setApiError(errorMsg);
+      setStaffList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let active = true;
-    getStaffApi()
-      .then((res) => {
-        if (!active) return;
-        if (res.success && res.staff?.length) {
-          setStaffList(res.staff);
-        } else {
-          setStaffList(fallbackStaff);
-        }
-      })
-      .catch(() => {
-        if (active) setStaffList(fallbackStaff);
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    fetchStaff();
   }, []);
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -124,27 +91,10 @@ export default function ShopStaffPage() {
       setMessage(`Invitation sent successfully to ${inviteForm.email}`);
       setInviteModalOpen(false);
       setInviteForm({ email: "", firstName: "", lastName: "", role: "staff" });
-      const fresh = await getStaffApi();
-      if (fresh.success && fresh.staff?.length) {
-        setStaffList(fresh.staff);
-      }
-    } catch {
-      // Local fallback addition
-      const newM: StaffMember = {
-        id: `m-${Date.now()}`,
-        userId: `u-${Date.now()}`,
-        role: inviteForm.role,
-        status: "invited",
-        user: {
-          firstName: inviteForm.firstName.trim() || "Invited",
-          lastName: inviteForm.lastName.trim() || "Staff",
-          email: inviteForm.email.trim(),
-        },
-        branch: { name: "Main Branch" },
-      };
-      setStaffList((prev) => [...prev, newM]);
-      setMessage(`Invitation dispatched to ${inviteForm.email}`);
-      setInviteModalOpen(false);
+      await fetchStaff();
+    } catch (err: unknown) {
+      const errText = err instanceof Error ? err.message : "Failed to send invitation";
+      setMessage(errText);
     } finally {
       setIsSubmitting(false);
     }
@@ -156,118 +106,169 @@ export default function ShopStaffPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-            Staff & Permissions
+            Staff & Access Permissions
           </h1>
-          <p className="text-xs sm:text-sm text-secondary-text mt-1">
-            Manage cashiers and store assistants with restricted counter POS permissions.
+          <p className="text-xs sm:text-sm text-secondary-text mt-0.5">
+            Manage store roles, cashier access, and staff invitations.
           </p>
         </div>
 
-        <Button
-          onClick={() => setInviteModalOpen(true)}
-          variant="primary"
-          className="font-bold flex items-center gap-2"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Invite Store Staff</span>
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => fetchStaff()}
+            title="Refresh staff"
+            className="w-10 h-10 rounded-xl border border-border bg-background flex items-center justify-center text-secondary-text hover:text-foreground"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setInviteModalOpen(true)}
+            className="font-bold flex items-center gap-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Invite Staff Member</span>
+          </Button>
+        </div>
       </div>
 
+      {/* API Notice / Error */}
+      {apiError && (
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{apiError}</span>
+          </div>
+          <button onClick={() => fetchStaff()} className="underline font-bold shrink-0">
+            Retry
+          </button>
+        </div>
+      )}
+
       {message && (
-        <div className="p-4 rounded-2xl bg-success/10 border border-success/20 text-success text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" />
+        <div className="p-3.5 rounded-2xl bg-success/10 border border-success/30 flex items-center gap-2 text-xs text-success">
+          <CheckCircle className="w-4 h-4 shrink-0" />
           <span>{message}</span>
         </div>
       )}
 
-      {/* Staff Roster Table */}
+      {/* Staff Directory Table */}
       <div className="bg-background border border-border rounded-3xl p-5 sm:p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold text-foreground">Active Roster & Invitations</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base sm:text-lg font-bold text-foreground">Active Team Members</h2>
           <span className="text-xs text-secondary-text font-semibold">
-            {staffList.length} Team Members
+            {staffList.length} members
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-border text-secondary-text font-semibold uppercase tracking-wider">
-                <th className="pb-3">Staff Member</th>
-                <th className="pb-3">Email</th>
-                <th className="pb-3">Role & Permissions</th>
-                <th className="pb-3">Assigned Branch</th>
-                <th className="pb-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border text-foreground">
-              {staffList.map((m) => {
-                const isOwner = m.role === "owner";
-                return (
-                  <tr key={m.id} className="hover:bg-surface-alt/50 transition-colors">
-                    <td className="py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-brand-primary/10 text-brand-primary font-bold flex items-center justify-center text-xs shrink-0">
-                          {m.user.firstName?.[0] || "U"}
-                        </div>
-                        <span className="font-bold text-foreground">
-                          {m.user.firstName} {m.user.lastName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 text-secondary-text">{m.user.email}</td>
-                    <td className="py-3.5">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                          isOwner
-                            ? "bg-brand-primary/15 text-brand-primary border border-brand-primary/30"
-                            : "bg-surface-alt text-foreground border border-border"
-                        }`}
-                      >
-                        {m.role === "owner" ? "Oga / Owner" : "Restricted Staff (POS Only)"}
+        {isLoading ? (
+          <div className="space-y-3 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-surface-alt rounded-2xl" />
+            ))}
+          </div>
+        ) : staffList.length === 0 ? (
+          <div className="p-12 text-center border border-dashed border-border rounded-2xl">
+            <Users className="w-10 h-10 mx-auto text-secondary-text opacity-40 mb-2" />
+            <p className="text-sm font-semibold text-foreground">No staff members found</p>
+            <p className="text-xs text-secondary-text mt-1 max-w-sm mx-auto">
+              You haven&apos;t invited any team members to this store yet. Click below to invite your cashiers and managers.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setInviteModalOpen(true)}
+              className="mt-4 font-bold"
+            >
+              Invite First Staff Member
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {staffList.map((m) => (
+              <div
+                key={m.id}
+                className="p-3.5 rounded-2xl border border-border bg-surface-alt flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-sm">
+                    {m.user.firstName?.[0] || m.user.email[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-foreground">
+                        {m.user.firstName ? `${m.user.firstName} ${m.user.lastName || ""}` : m.user.email}
                       </span>
-                    </td>
-                    <td className="py-3.5 font-medium">{m.branch?.name || "Main Branch"}</td>
-                    <td className="py-3.5">
                       <Badge status={m.status === "active" ? "success" : "warning"}>
-                        {m.status === "active" ? "Active" : "Invitation Pending"}
+                        {m.status === "active" ? "Active" : "Invited"}
                       </Badge>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                    <p className="text-xs text-secondary-text">{m.user.email}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="text-left sm:text-right">
+                    <span className="inline-block px-2.5 py-0.5 rounded-full bg-surface text-[10px] font-bold uppercase tracking-wider text-secondary-text border border-border">
+                      {m.role}
+                    </span>
+                    <p className="text-[11px] text-secondary-text mt-0.5">
+                      {m.branch?.name || "All Branches"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Invite Modal */}
       {inviteModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95">
-            <h2 className="text-xl font-bold text-foreground">Invite Cashier / Staff</h2>
-            <p className="text-xs text-secondary-text mt-1">
-              Send a secure email invitation with an activation token.
-            </p>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground">Invite Staff Member</h3>
+              <button
+                onClick={() => setInviteModalOpen(false)}
+                className="text-secondary-text hover:text-foreground text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
 
-            <form onSubmit={handleInvite} className="mt-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleInvite} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-secondary-text uppercase mb-1">
+                  Email Address *
+                </label>
+                <Input
+                  type="email"
+                  placeholder="cashier@gmail.com"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
+                  <label className="block font-semibold text-secondary-text uppercase mb-1">
                     First Name
                   </label>
                   <Input
-                    placeholder="Chinedu"
+                    placeholder="Emeka"
                     value={inviteForm.firstName}
                     onChange={(e) => setInviteForm({ ...inviteForm, firstName: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
+                  <label className="block font-semibold text-secondary-text uppercase mb-1">
                     Last Name
                   </label>
                   <Input
-                    placeholder="Eze"
+                    placeholder="Okafor"
                     value={inviteForm.lastName}
                     onChange={(e) => setInviteForm({ ...inviteForm, lastName: e.target.value })}
                   />
@@ -275,48 +276,37 @@ export default function ShopStaffPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
-                  Email Address
-                </label>
-                <Input
-                  type="email"
-                  placeholder="staff@gmail.com"
-                  value={inviteForm.email}
-                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
+                <label className="block font-semibold text-secondary-text uppercase mb-1">
                   Assigned Store Role
                 </label>
                 <select
                   value={inviteForm.role}
                   onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
-                  className="w-full h-10 px-3 rounded-xl border border-border bg-surface text-xs font-medium outline-none"
+                  className="w-full h-11 px-3 rounded-xl border border-border bg-surface-alt text-xs font-medium outline-none focus:border-brand-primary"
                 >
-                  <option value="staff">Cashier / Staff (Restricted to POS checkout)</option>
-                  <option value="manager">Store Manager (POS + Void + Inventory adjustments)</option>
+                  <option value="staff">Cashier / Staff (POS Sales Only)</option>
+                  <option value="manager">Store Manager (POS + Inventory)</option>
+                  <option value="admin">Administrator (Full Access)</option>
                 </select>
               </div>
 
-              <div className="pt-3 flex gap-2.5">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="secondary"
+                  size="md"
                   onClick={() => setInviteModalOpen(false)}
-                  className="flex-1 font-semibold"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={isSubmitting}
-                  className="flex-1 font-bold"
+                  size="md"
+                  disabled={isSubmitting || !inviteForm.email.trim()}
+                  className="font-bold"
                 >
-                  {isSubmitting ? "Inviting..." : "Send Invitation"}
+                  {isSubmitting ? "Dispatching..." : "Send Invitation"}
                 </Button>
               </div>
             </form>

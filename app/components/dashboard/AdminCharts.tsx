@@ -13,6 +13,19 @@ const titleCls =
  */
 
 export function ShopGrowthChart({ series }: { series: number[] }) {
+  if (!series || series.length < 2) {
+    return (
+      <div className={card}>
+        <h2 className={titleCls}>Shop Growth (12 Months)</h2>
+        <div className="mt-4 flex h-44 items-center justify-center rounded-xl border border-dashed border-border dark:border-[#1e3a2b]">
+          <p className="text-xs text-light-secondary dark:text-ink-secondary">
+            Insufficient historical points to project network trajectory.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const w = 320;
   const h = 160;
   const pad = 12;
@@ -60,7 +73,20 @@ export function ShopGrowthChart({ series }: { series: number[] }) {
 }
 
 export function GrossRevenueBarChart({ rows }: { rows: MonthlyGrossRevenue[] }) {
-  const max = Math.max(...rows.map((r) => r.amountNGN));
+  if (!rows || rows.length === 0) {
+    return (
+      <div className={card}>
+        <h2 className={titleCls}>Gross Revenue Bar Chart (6m)</h2>
+        <div className="mt-4 flex h-44 items-center justify-center rounded-xl border border-dashed border-border dark:border-[#1e3a2b]">
+          <p className="text-xs text-light-secondary dark:text-ink-secondary">
+            No 6-month gross revenue data recorded.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const max = Math.max(...rows.map((r) => r.amountNGN), 1);
   return (
     <div className={card}>
       <h2 className={titleCls}>Gross Revenue Bar Chart (6m)</h2>

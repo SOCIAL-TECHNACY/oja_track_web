@@ -1,7 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type { PaymentMethod, Product } from "@/types/retail";
 
-export interface LocalProduct extends Product {
+export interface LocalProduct extends Omit<Product, "inventories"> {
   localQuantity: number;
 }
 
@@ -27,7 +27,7 @@ export interface OfflineQueuedSale {
     unitPrice: number;
     unitCost?: number;
   }>;
-  status: "pending" | "syncing" | "synced" | "conflict";
+  status: "pending" | "syncing" | "synced" | "failed" | "conflict";
   createdAtISO: string;
   syncedAtISO?: string;
   retryCount: number;
@@ -47,4 +47,20 @@ export class OjaTrackOfflineDB extends Dexie {
   }
 }
 
-export const offlineDb = typeof window !== "undefined" ? new OjaTrackOfflineDB() : (null as any);
+export const offlineDb =
+  typeof window !== "undefined" ? new OjaTrackOfflineDB() : (null as unknown as OjaTrackOfflineDB);
+
+export async function requestPersistentStorage(): Promise<boolean> {
+  if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.persist) {
+    try {
+      const isPersisted = await navigator.storage.persisted();
+      if (!isPersisted) {
+        return await navigator.storage.persist();
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}

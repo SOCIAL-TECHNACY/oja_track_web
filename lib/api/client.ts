@@ -1,4 +1,4 @@
-import { ENDPOINTS } from "./endpoints";
+import { API_BASE, ENDPOINTS, IS_API_CONFIGURED } from "./endpoints";
 
 let inMemoryToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;
@@ -29,9 +29,9 @@ export interface RequestOptions extends RequestInit {
 
 export class ApiError extends Error {
   statusCode: number;
-  data: any;
+  data: unknown;
 
-  constructor(message: string, statusCode: number, data?: any) {
+  constructor(message: string, statusCode: number, data?: unknown) {
     super(message);
     this.name = "ApiError";
     this.statusCode = statusCode;
@@ -42,6 +42,11 @@ export class ApiError extends Error {
 async function refreshAccessToken(): Promise<string | null> {
   if (refreshPromise) {
     return refreshPromise;
+  }
+
+  if (process.env.NODE_ENV === "production" && !IS_API_CONFIGURED) {
+    setAccessToken(null);
+    return null;
   }
 
   refreshPromise = (async () => {
@@ -75,10 +80,19 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
-export async function apiClient<T = any>(
+export async function apiClient<T = unknown>(
   url: string,
   options: RequestOptions = {}
 ): Promise<T> {
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd && !IS_API_CONFIGURED) {
+    throw new ApiError(
+      "Backend API URL is not configured. Please set NEXT_PUBLIC_API_URL in environment settings.",
+      0,
+      { unconfigured: true }
+    );
+  }
+
   const { skipAuth = false, headers = {}, ...rest } = options;
 
   const requestHeaders: Record<string, string> = {
@@ -97,11 +111,10 @@ export async function apiClient<T = any>(
       headers: requestHeaders,
       credentials: "include", // Always include cookies
     });
-  } catch (err: any) {
-    throw new ApiError(
-      err?.message || "Network error. Please check your internet connection.",
-      0
-    );
+  } catch (err: unknown) {
+    const errorMsg =
+      err instanceof Error ? err.message : "Network error. Please check your internet connection.";
+    throw new ApiError(errorMsg, 0);
   }
 
   // Handle 401 Unauthorized - attempt silent token rotation once
@@ -115,11 +128,10 @@ export async function apiClient<T = any>(
           headers: requestHeaders,
           credentials: "include",
         });
-      } catch (err: any) {
-        throw new ApiError(
-          err?.message || "Network error after session refresh.",
-          0
-        );
+      } catch (err: unknown) {
+        const errorMsg =
+          err instanceof Error ? err.message : "Network error after session refresh.";
+        throw new ApiError(errorMsg, 0);
       }
     } else {
       if (onUnauthorizedCallback) {
@@ -129,7 +141,7 @@ export async function apiClient<T = any>(
   }
 
   const contentType = response.headers.get("content-type");
-  let responseData: any = null;
+  let responseData: unknown = null;
   if (contentType && contentType.includes("application/json")) {
     try {
       responseData = await response.json();
@@ -141,10 +153,24 @@ export async function apiClient<T = any>(
   }
 
   if (!response.ok) {
-    const errorMessage =
-      (typeof responseData === "object" && responseData?.message) ||
-      (typeof responseData === "string" && responseData) ||
-      `Request failed with status ${response.status}`;
+    let errorMessage = `Request failed with status ${response.status}`;
+
+    if (responseData && typeof responseData === "object") {
+      const dataObj = responseData as Record<string, unknown>;
+      if (typeof dataObj.message === "string") {
+        errorMessage = dataObj.message;
+      } else if (typeof dataObj.error === "string") {
+        errorMessage = dataObj.error;
+      }
+    } else if (typeof responseData === "string" && responseData.trim().length > 0) {
+      errorMessage = responseData;
+    }
+
+    if (response.status === 403) {
+      errorMessage = errorMessage || "Access forbidden. Your account does not have permission for this resource.";
+    } else if (response.status === 404) {
+      errorMessage = errorMessage || "The requested endpoint or resource was not found on the server.";
+    }
 
     throw new ApiError(errorMessage, response.status, responseData);
   }

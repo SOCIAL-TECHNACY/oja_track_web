@@ -5,21 +5,20 @@ import { Input } from "../ui/Input";
 import {
   formatNGN,
   MIN_PAYOUT_NGN,
-  mockPayoutDestination,
   parsePayoutAmount,
 } from "@/lib/agent-dashboard";
 import { requestPayoutApi } from "@/lib/api/agent";
-import { CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/lib/auth/auth-context";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 
 const labelClass =
   "mb-1.5 block text-sm text-light-secondary dark:text-ink-secondary";
 
 export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
-  const [bank, setBank] = useState(mockPayoutDestination.bank);
-  const [accountNumber, setAccountNumber] = useState(
-    mockPayoutDestination.accountNumber,
-  );
-  const [amount, setAmount] = useState("₦50,000");
+  const { safeUser } = useAuth();
+  const [bank, setBank] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [amount, setAmount] = useState("");
   const [touched, setTouched] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -36,7 +35,7 @@ export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
     if (parsedAmount < MIN_PAYOUT_NGN)
       return `Minimum payout is ${formatNGN(MIN_PAYOUT_NGN)}.`;
     if (parsedAmount > balanceNGN)
-      return `Amount exceeds your ${formatNGN(balanceNGN)} balance.`;
+      return `Amount exceeds your ${formatNGN(balanceNGN)} available balance.`;
     return null;
   })();
 
@@ -46,7 +45,11 @@ export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
     setSuccessMsg(null);
     setErrorMsg(null);
 
-    if (accountError || amountError || Number.isNaN(parsedAmount)) return;
+    if (accountError || amountError || Number.isNaN(parsedAmount) || parsedAmount <= 0) return;
+
+    const verifiedName = safeUser
+      ? `${safeUser.firstName} ${safeUser.lastName}`.trim()
+      : "Operations Agent";
 
     setIsSubmitting(true);
     try {
@@ -54,20 +57,24 @@ export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
         amount: parsedAmount,
         payout_method: "bank_transfer",
         payout_details: {
-          bank,
+          bank: bank.trim(),
           account_number: accountNumber.trim(),
-          verified_name: mockPayoutDestination.verifiedName,
+          verified_name: verifiedName,
         },
       });
 
-      if (res.success) {
+      if (res && res.success) {
         setSuccessMsg(`Withdrawal request of ${formatNGN(parsedAmount)} submitted to clearance queue.`);
+        setAmount("");
+        setTouched(false);
       } else {
-        throw new Error(res.message || "Failed to submit payout request");
+        throw new Error(res?.message || "Failed to submit payout request to central clearance.");
       }
     } catch (err: any) {
-      // Local fallback simulation if endpoint not live
-      setSuccessMsg(`Withdrawal request for ${formatNGN(parsedAmount)} logged successfully.`);
+      setErrorMsg(
+        err?.message ||
+          "Could not transmit withdrawal request to clearance queue. Please check connection and try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -96,8 +103,9 @@ export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
       )}
 
       {errorMsg && (
-        <div className="mt-4 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs font-semibold">
-          {errorMsg}
+        <div className="mt-4 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
         </div>
       )}
 
@@ -108,6 +116,7 @@ export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
           </label>
           <Input
             id="payout-bank"
+            placeholder="e.g. GTBank, Access Bank, Zenith Bank"
             value={bank}
             onChange={(e) => setBank(e.target.value)}
             required
@@ -120,6 +129,7 @@ export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
           </label>
           <Input
             id="payout-account"
+            placeholder="10-digit NUBAN account number"
             inputMode="numeric"
             maxLength={10}
             value={accountNumber}
@@ -140,6 +150,7 @@ export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
           <div className="relative">
             <Input
               id="payout-amount"
+              placeholder={`Min ${formatNGN(MIN_PAYOUT_NGN)}`}
               inputMode="decimal"
               value={amount}
               error={amountError !== null}
@@ -148,16 +159,18 @@ export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
               className="pr-16"
               required
             />
-            <button
-              type="button"
-              onClick={() => {
-                setAmount(formatNGN(balanceNGN));
-                setTouched(true);
-              }}
-              className="absolute top-1/2 right-3 -translate-y-1/2 rounded px-1.5 py-0.5 text-xs font-bold text-brand-primary hover:underline"
-            >
-              Max
-            </button>
+            {balanceNGN > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAmount(String(balanceNGN));
+                  setTouched(true);
+                }}
+                className="absolute top-1/2 right-3 -translate-y-1/2 rounded px-1.5 py-0.5 text-xs font-bold text-brand-primary hover:underline"
+              >
+                Max
+              </button>
+            )}
           </div>
           {amountError && (
             <p className="mt-1.5 text-xs text-danger">{amountError}</p>
@@ -166,10 +179,14 @@ export default function PayoutForm({ balanceNGN }: { balanceNGN: number }) {
 
         <button
           type="submit"
-          disabled={isSubmitting || !!accountError || !!amountError}
-          className="inline-flex h-[50px] w-full items-center justify-center rounded-xl bg-brand-primary px-5 text-sm font-bold text-black transition-all hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          disabled={isSubmitting || !!accountError || !!amountError || !bank.trim() || balanceNGN < MIN_PAYOUT_NGN}
+          className="inline-flex h-[50px] w-full items-center justify-center rounded-xl bg-brand-primary px-5 text-sm font-bold text-black transition-all hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
         >
-          {isSubmitting ? "Submitting Request..." : `Withdraw to ${bank}`}
+          {isSubmitting
+            ? "Submitting Request..."
+            : bank.trim()
+              ? `Withdraw to ${bank.trim()}`
+              : "Submit Withdrawal Request"}
         </button>
       </form>
     </section>

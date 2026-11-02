@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   CheckCircle2,
   Minus,
   Package,
   Plus,
   Printer,
-  RotateCw,
+  RefreshCw,
   Search,
   ShoppingBag,
   Trash2,
@@ -15,11 +16,15 @@ import {
   WifiOff,
 } from "lucide-react";
 import { createSaleApi, getCategoriesApi, getProductsApi } from "@/lib/api/retail";
-import { queueOfflineSale } from "@/lib/offline/sync-manager";
-import { Input, SearchInput } from "@/app/components/ui/Input";
+import {
+  cacheProductsLocally,
+  getCachedProducts,
+  queueOfflineSale,
+} from "@/lib/offline/sync-manager";
+import { Input } from "@/app/components/ui/Input";
 import Button from "@/app/components/ui/Button";
 import Badge from "@/app/components/ui/Badge";
-import type { PaymentMethod, Product, ProductCategory, Sale } from "@/types/retail";
+import type { PaymentMethod, Product, ProductCategory } from "@/types/retail";
 
 interface CartItem {
   product: Product;
@@ -39,93 +44,26 @@ export default function ShopSalesPosPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [completedSale, setCompletedSale] = useState<any | null>(null);
   const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  // Baseline verified catalogue fallback if retail route is pending in backend
-  const fallbackProducts: Product[] = [
-    {
-      id: "prod-1",
-      organisationId: "org-1",
-      name: "Dangote Sugar 50kg Bag",
-      sku: "DAN-SUG-50KG",
-      sellingPrice: 85000,
-      costPrice: 78000,
-      reorderLevel: 5,
-      unit: "pack",
-      isActive: true,
-      createdAt: "",
-      updatedAt: "",
-    },
-    {
-      id: "prod-2",
-      organisationId: "org-1",
-      name: "Golden Penny Flour 50kg",
-      sku: "GP-FLOUR-50",
-      sellingPrice: 72000,
-      costPrice: 65000,
-      reorderLevel: 4,
-      unit: "pack",
-      isActive: true,
-      createdAt: "",
-      updatedAt: "",
-    },
-    {
-      id: "prod-3",
-      organisationId: "org-1",
-      name: "Peak Milk Powder 400g Tin (Carton)",
-      sku: "PEAK-400G-CTN",
-      sellingPrice: 48000,
-      costPrice: 43000,
-      reorderLevel: 6,
-      unit: "box",
-      isActive: true,
-      createdAt: "",
-      updatedAt: "",
-    },
-    {
-      id: "prod-4",
-      organisationId: "org-1",
-      name: "Milo Refill 500g (Carton)",
-      sku: "MILO-500G-CTN",
-      sellingPrice: 38500,
-      costPrice: 34000,
-      reorderLevel: 5,
-      unit: "box",
-      isActive: true,
-      createdAt: "",
-      updatedAt: "",
-    },
-    {
-      id: "prod-5",
-      organisationId: "org-1",
-      name: "Mama Gold Rice 50kg",
-      sku: "MG-RICE-50",
-      sellingPrice: 95000,
-      costPrice: 88000,
-      reorderLevel: 3,
-      unit: "pack",
-      isActive: true,
-      createdAt: "",
-      updatedAt: "",
-    },
-    {
-      id: "prod-6",
-      organisationId: "org-1",
-      name: "Power Oil 3 Litre Bottle",
-      sku: "PWR-OIL-3L",
-      sellingPrice: 11500,
-      costPrice: 9800,
-      reorderLevel: 10,
-      unit: "piece",
-      isActive: true,
-      createdAt: "",
-      updatedAt: "",
-    },
-  ];
+  async function loadPosData() {
+    setIsLoading(true);
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+    setIsOfflineMode(!isOnline);
 
-  useEffect(() => {
-    setIsOfflineMode(typeof navigator !== "undefined" ? !navigator.onLine : false);
+    // 1. Immediately load genuine cached items from IndexedDB
+    try {
+      const localCached = await getCachedProducts();
+      if (localCached.length > 0) {
+        setProducts(localCached);
+      }
+    } catch {
+      // IndexedDB initialization error handled
+    }
 
-    async function loadPosData() {
+    // 2. If online, fetch fresh catalog from backend and update cache
+    if (isOnline) {
       try {
         const [catsRes, prodsRes] = await Promise.all([
           getCategoriesApi().catch(() => ({ success: false, categories: [] })),
@@ -137,15 +75,31 @@ export default function ShopSalesPosPage() {
         }
         if (prodsRes.success && prodsRes.products?.length) {
           setProducts(prodsRes.products);
-        } else {
-          setProducts(fallbackProducts);
+          await cacheProductsLocally(prodsRes.products);
         }
       } catch {
-        setProducts(fallbackProducts);
+        setStatusMessage("Operating in offline catalog mode.");
       }
     }
+    setIsLoading(false);
+  }
 
+  useEffect(() => {
     loadPosData();
+
+    const handleOnline = () => {
+      setIsOfflineMode(false);
+      loadPosData();
+    };
+    const handleOffline = () => setIsOfflineMode(true);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   }, []);
 
   const addToCart = (product: Product) => {
@@ -217,13 +171,29 @@ export default function ShopSalesPosPage() {
     };
 
     try {
-      // If browser is online, attempt live submission to Daniel's backend
-      if (navigator.onLine) {
+      // If browser is online, attempt live submission to backend
+      if (typeof navigator !== "undefined" && navigator.onLine) {
         try {
-          const res = await createSaleApi(salePayload);
-          if (res.success && (res.data?.sale || res.sale)) {
+          const res = await createSaleApi({
+            ...salePayload,
+            sold_at: new Date().toISOString(),
+          });
+          if (res.success) {
             setCompletedSale({
-              ...(res.data?.sale || res.sale),
+              id: res.data?.sale?.id || res.sale?.id || clientTxId,
+              receiptNumber: res.data?.sale?.receiptNumber || res.sale?.receiptNumber || localReceipt,
+              total,
+              discount,
+              paymentMethod,
+              customerName,
+              soldAt: new Date().toISOString(),
+              items: cart.map((i) => ({
+                productId: i.product.id,
+                productName: i.product.name,
+                quantity: i.quantity,
+                unitPrice: Number(i.product.sellingPrice),
+                lineTotal: Number(i.product.sellingPrice) * i.quantity,
+              })),
               isOffline: false,
             });
             setCart([]);
@@ -234,7 +204,7 @@ export default function ShopSalesPosPage() {
         }
       }
 
-      // Offline-First Fallback: Save transaction locally in IndexedDB
+      // Offline Fallback: Save transaction locally in IndexedDB
       await queueOfflineSale({
         id: clientTxId,
         receiptNumber: localReceipt,
@@ -286,15 +256,24 @@ export default function ShopSalesPosPage() {
       <div className="lg:col-span-7 space-y-4">
         {/* Search & Category Filter */}
         <div className="bg-background border border-border p-4 rounded-3xl space-y-3 shadow-sm">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary-text" />
-            <input
-              type="text"
-              placeholder="Scan barcode, enter SKU or product name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-surface-alt text-sm font-medium outline-none focus:border-brand-primary"
-            />
+          <div className="flex items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary-text" />
+              <input
+                type="text"
+                placeholder="Scan barcode, enter SKU or product name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-surface-alt text-sm font-medium outline-none focus:border-brand-primary"
+              />
+            </div>
+            <button
+              onClick={() => loadPosData()}
+              title="Refresh catalog"
+              className="w-11 h-11 rounded-xl border border-border bg-surface-alt flex items-center justify-center text-secondary-text hover:text-foreground"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1 text-xs">
@@ -324,104 +303,162 @@ export default function ShopSalesPosPage() {
           </div>
         </div>
 
-        {/* Product Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[640px] overflow-y-auto pr-1">
-          {filteredProducts.map((p) => {
-            const inCart = cart.find((i) => i.product.id === p.id);
-            return (
-              <div
-                key={p.id}
-                onClick={() => addToCart(p)}
-                className="bg-background border border-border rounded-2xl p-4 flex flex-col justify-between hover:border-brand-primary/60 hover:shadow-md cursor-pointer transition-all group relative select-none"
-              >
-                {inCart && (
-                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-brand-primary text-black font-extrabold text-xs flex items-center justify-center shadow-sm">
-                    {inCart.quantity}
-                  </div>
-                )}
-                <div>
-                  <div className="text-[10px] font-mono text-secondary-text uppercase">
-                    {p.sku}
-                  </div>
-                  <h3 className="font-bold text-xs sm:text-sm text-foreground mt-1 line-clamp-2 group-hover:text-brand-primary transition-colors">
-                    {p.name}
-                  </h3>
-                </div>
+        {/* Status notice */}
+        {isOfflineMode && (
+          <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-600 dark:text-amber-400">
+            <div className="flex items-center gap-2">
+              <WifiOff className="w-4 h-4 shrink-0" />
+              <span>Offline Terminal Mode. Sales will queue locally and sync automatically when reconnected.</span>
+            </div>
+            <Link href="/shop/offline-queue" className="underline font-bold shrink-0">
+              View Queue
+            </Link>
+          </div>
+        )}
 
-                <div className="mt-4 pt-2 border-t border-border flex items-center justify-between">
-                  <span className="font-extrabold text-xs sm:text-sm text-foreground">
-                    {formatNGN(p.sellingPrice)}
-                  </span>
-                  <span className="text-[10px] text-secondary-text uppercase font-semibold">
-                    /{p.unit}
-                  </span>
+        {/* Product Cards Grid or Skeletons / Empty State */}
+        {isLoading && products.length === 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-pulse">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-32 bg-surface-alt border border-border rounded-2xl p-4" />
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="p-12 text-center border border-dashed border-border rounded-3xl bg-background">
+            <Package className="w-12 h-12 mx-auto text-secondary-text opacity-40 mb-3" />
+            <h3 className="font-bold text-base text-foreground">No Products in Catalog</h3>
+            <p className="text-xs text-secondary-text mt-1 max-w-sm mx-auto">
+              Your store catalog is currently empty. Add products in the Inventory section or sync with your store backend to start selling.
+            </p>
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <Link href="/shop/inventory">
+                <Button variant="primary" size="md" className="font-bold">
+                  Add Products in Inventory
+                </Button>
+              </Link>
+            </div>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="p-10 text-center border border-dashed border-border rounded-3xl bg-background">
+            <Search className="w-8 h-8 mx-auto text-secondary-text opacity-40 mb-2" />
+            <p className="text-sm font-semibold text-foreground">No matching products found</p>
+            <p className="text-xs text-secondary-text mt-1">
+              Try adjusting your search query or select another category.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[640px] overflow-y-auto pr-1">
+            {filteredProducts.map((p) => {
+              const inCart = cart.find((i) => i.product.id === p.id);
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => addToCart(p)}
+                  className="bg-background border border-border rounded-2xl p-4 flex flex-col justify-between hover:border-brand-primary/60 hover:shadow-md cursor-pointer transition-all group relative select-none"
+                >
+                  {inCart && (
+                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-brand-primary text-black font-extrabold text-xs flex items-center justify-center shadow-sm">
+                      {inCart.quantity}
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-[10px] font-mono text-secondary-text uppercase">
+                      {p.sku}
+                    </div>
+                    <h3 className="font-bold text-xs sm:text-sm text-foreground mt-1 line-clamp-2 group-hover:text-brand-primary transition-colors">
+                      {p.name}
+                    </h3>
+                  </div>
+
+                  <div className="mt-4 pt-2 border-t border-border flex items-center justify-between">
+                    <span className="font-extrabold text-xs sm:text-sm text-foreground">
+                      {formatNGN(p.sellingPrice)}
+                    </span>
+                    <span className="text-[10px] text-secondary-text uppercase font-semibold">
+                      /{p.unit}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* POS Cart & Checkout Panel (Right / 5 cols) */}
-      <div className="lg:col-span-5 bg-background border border-border rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-sm">
+      {/* Cart & Checkout Panel (Right / 5 cols) */}
+      <div className="lg:col-span-5 bg-background border border-border rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col justify-between h-full min-h-[580px]">
         <div>
+          {/* Header */}
           <div className="flex items-center justify-between pb-4 border-b border-border">
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-brand-primary" />
-              <h2 className="font-bold text-lg text-foreground">Current Cart</h2>
+              <h2 className="font-bold text-base text-foreground">Active Order</h2>
             </div>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-surface-alt border border-border text-foreground">
-              {cart.reduce((s, i) => s + i.quantity, 0)} Items
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-secondary-text font-semibold">
+                {cart.reduce((s, i) => s + i.quantity, 0)} items
+              </span>
+              {cart.length > 0 && (
+                <button
+                  onClick={() => setCart([])}
+                  className="text-xs text-danger hover:underline font-semibold ml-2"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Cart Items List */}
-          <div className="my-4 space-y-3 max-h-[300px] overflow-y-auto pr-1">
+          <div className="py-3 max-h-[300px] overflow-y-auto space-y-2.5">
             {cart.length === 0 ? (
               <div className="text-center py-12 text-secondary-text">
-                <Package className="w-10 h-10 mx-auto text-secondary-text/40 mb-2" />
-                <p className="text-sm font-semibold">Cart is currently empty</p>
-                <p className="text-xs mt-1">Tap any product on the left to add items</p>
+                <ShoppingBag className="w-10 h-10 mx-auto opacity-30 mb-2" />
+                <p className="text-sm font-semibold">Cart is empty</p>
+                <p className="text-xs mt-0.5">Click or scan products to add them to this order.</p>
               </div>
             ) : (
               cart.map((item) => (
                 <div
                   key={item.product.id}
-                  className="p-3 rounded-xl bg-surface-alt border border-border flex items-center justify-between text-xs"
+                  className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-surface-alt border border-border"
                 >
-                  <div className="min-w-0 flex-1 pr-2">
-                    <div className="font-bold text-foreground truncate">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-bold text-foreground truncate">
                       {item.product.name}
-                    </div>
-                    <div className="text-secondary-text font-mono mt-0.5">
-                      {formatNGN(item.product.sellingPrice)} &times; {item.quantity} ={" "}
-                      <span className="font-bold text-foreground">
-                        {formatNGN(Number(item.product.sellingPrice) * item.quantity)}
-                      </span>
-                    </div>
+                    </h4>
+                    <p className="text-[11px] text-secondary-text">
+                      {formatNGN(item.product.sellingPrice)} each
+                    </p>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => updateQuantity(item.product.id, -1)}
-                      className="w-7 h-7 rounded-lg bg-background border border-border flex items-center justify-center hover:bg-surface"
+                      className="w-7 h-7 rounded-lg border border-border bg-background flex items-center justify-center text-foreground hover:bg-surface-alt"
                     >
-                      <Minus className="w-3.5 h-3.5" />
+                      <Minus className="w-3 h-3" />
                     </button>
-                    <span className="w-6 text-center font-bold text-sm">
+                    <span className="w-7 text-center font-bold text-xs text-foreground">
                       {item.quantity}
                     </span>
                     <button
                       onClick={() => updateQuantity(item.product.id, 1)}
-                      className="w-7 h-7 rounded-lg bg-background border border-border flex items-center justify-center hover:bg-surface"
+                      className="w-7 h-7 rounded-lg border border-border bg-background flex items-center justify-center text-foreground hover:bg-surface-alt"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-3 h-3" />
                     </button>
+                  </div>
+
+                  <div className="text-right shrink-0 min-w-16">
+                    <div className="font-extrabold text-xs text-foreground">
+                      {formatNGN(Number(item.product.sellingPrice) * item.quantity)}
+                    </div>
                     <button
                       onClick={() => removeFromCart(item.product.id)}
-                      className="p-1.5 text-danger hover:bg-danger/10 rounded-lg ml-1"
+                      className="text-[10px] text-danger hover:underline mt-0.5"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      Remove
                     </button>
                   </div>
                 </div>
@@ -430,143 +467,136 @@ export default function ShopSalesPosPage() {
           </div>
         </div>
 
-        {/* Pricing Summary & Checkout Options */}
+        {/* Calculations, Payment Method, and Checkout Action */}
         <div className="pt-4 border-t border-border space-y-3">
+          {/* Customer Info (Optional) */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <input
+              placeholder="Customer Name (Optional)"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="h-9 px-3 rounded-xl border border-border bg-surface-alt text-xs outline-none focus:border-brand-primary"
+            />
+            <input
+              placeholder="Phone (for SMS receipt)"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              className="h-9 px-3 rounded-xl border border-border bg-surface-alt text-xs outline-none focus:border-brand-primary"
+            />
+          </div>
+
           {/* Payment Method Selector */}
           <div>
-            <label className="block text-[11px] font-bold text-secondary-text uppercase mb-1.5">
+            <label className="block text-[10px] font-bold text-secondary-text uppercase mb-1.5">
               Payment Method
             </label>
-            <div className="grid grid-cols-4 gap-2 text-xs">
-              {(["cash", "card", "transfer", "pos"] as PaymentMethod[]).map((m) => (
+            <div className="grid grid-cols-3 gap-1.5 text-xs">
+              {(["cash", "pos", "transfer"] as PaymentMethod[]).map((method) => (
                 <button
-                  key={m}
+                  key={method}
                   type="button"
-                  onClick={() => setPaymentMethod(m)}
-                  className={`py-2 rounded-xl font-bold uppercase transition-colors border ${
-                    paymentMethod === m
-                      ? "bg-brand-primary text-black border-brand-primary"
-                      : "bg-surface-alt text-secondary-text border-border hover:text-foreground"
+                  onClick={() => setPaymentMethod(method)}
+                  className={`h-9 rounded-xl font-bold uppercase transition-colors ${
+                    paymentMethod === method
+                      ? "bg-brand-primary text-black"
+                      : "bg-surface-alt border border-border text-secondary-text hover:text-foreground"
                   }`}
                 >
-                  {m}
+                  {method}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Customer info (optional) */}
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              placeholder="Customer Name (optional)"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="h-9 px-3 rounded-xl border border-border bg-surface-alt text-xs font-medium outline-none focus:border-brand-primary"
-            />
-            <input
-              type="number"
-              placeholder="Discount ₦"
-              value={discount || ""}
-              onChange={(e) => setDiscount(Number(e.target.value))}
-              className="h-9 px-3 rounded-xl border border-border bg-surface-alt text-xs font-medium outline-none focus:border-brand-primary"
-            />
-          </div>
-
-          {/* Totals */}
-          <div className="space-y-1.5 text-xs text-secondary-text pt-2">
+          {/* Subtotal, Discount, and Total */}
+          <div className="space-y-1.5 text-xs text-secondary-text pt-2 border-t border-border">
             <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span className="font-semibold text-foreground">{formatNGN(subtotal)}</span>
+              <span>Subtotal</span>
+              <span className="font-bold text-foreground">{formatNGN(subtotal)}</span>
             </div>
-            {discount > 0 && (
-              <div className="flex justify-between text-danger">
-                <span>Discount:</span>
-                <span>-{formatNGN(discount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-base font-extrabold text-foreground pt-1 border-t border-border">
-              <span>Total Payable:</span>
+            <div className="flex justify-between items-center">
+              <span>Discount (₦)</span>
+              <input
+                type="number"
+                min="0"
+                value={discount || ""}
+                onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
+                placeholder="0"
+                className="w-24 h-7 text-right px-2 rounded-lg border border-border bg-surface-alt text-xs font-bold text-foreground outline-none focus:border-brand-primary"
+              />
+            </div>
+            <div className="flex justify-between text-base font-extrabold text-foreground pt-1.5 border-t border-border">
+              <span>Total Payable</span>
               <span className="text-brand-primary">{formatNGN(total)}</span>
             </div>
           </div>
 
+          {/* Pay Button */}
           <Button
+            variant="primary"
+            size="lg"
             onClick={handleCheckout}
             disabled={cart.length === 0 || isSubmitting}
-            variant="primary"
-            className="w-full font-bold h-12 text-sm flex items-center justify-center gap-2 shadow-sm mt-2"
+            className="w-full font-extrabold flex items-center justify-center gap-2 mt-2"
           >
             {isSubmitting ? (
-              <>
-                <RotateCw className="w-4 h-4 animate-spin" />
-                <span>Processing Transaction...</span>
-              </>
+              <span>Finalizing Order...</span>
             ) : (
-              <>
-                <span>Complete Sale ({formatNGN(total)})</span>
-              </>
+              <span>Complete Sale · {formatNGN(total)}</span>
             )}
           </Button>
         </div>
       </div>
 
-      {/* Sale Confirmation Receipt Modal */}
+      {/* Sale Confirmation Modal / Receipt */}
       {completedSale && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95">
-            <div className="text-center">
-              <div className="w-14 h-14 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto mb-3">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
-              <h2 className="text-2xl font-extrabold text-foreground">Sale Successful!</h2>
-              <p className="text-xs text-secondary-text mt-1">
-                Receipt Number:{" "}
-                <span className="font-mono font-bold text-foreground">
-                  {completedSale.receiptNumber}
-                </span>
-              </p>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl text-center">
+            <div className="w-12 h-12 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
 
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Sale Completed!</h3>
+              <p className="text-xs text-secondary-text mt-0.5">
+                Receipt: <span className="font-mono font-bold text-foreground">{completedSale.receiptNumber}</span>
+              </p>
               {completedSale.isOffline && (
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-warning/10 text-warning text-xs font-bold border border-warning/20">
+                <div className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-warning/15 text-warning text-xs font-bold">
                   <WifiOff className="w-3.5 h-3.5" />
-                  <span>Saved locally in offline queue (Will sync when online)</span>
+                  <span>Saved to Offline Queue</span>
                 </div>
               )}
             </div>
 
-            <div className="my-6 p-4 rounded-2xl bg-surface-alt border border-border text-xs space-y-2">
-              <div className="flex justify-between font-bold pb-2 border-b border-border">
-                <span>Total Amount Paid:</span>
-                <span className="text-brand-primary text-sm font-extrabold">
-                  {formatNGN(completedSale.total)}
-                </span>
-              </div>
+            <div className="bg-surface-alt rounded-2xl p-4 text-left space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-secondary-text">Payment Method:</span>
-                <span className="font-semibold uppercase">{completedSale.paymentMethod}</span>
+                <span className="font-bold text-foreground uppercase">{completedSale.paymentMethod}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-secondary-text">Customer:</span>
-                <span className="font-semibold">{completedSale.customerName || "Walk-in"}</span>
+                <span className="text-secondary-text">Total Amount:</span>
+                <span className="font-extrabold text-brand-primary">{formatNGN(completedSale.total)}</span>
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex items-center gap-2 pt-2">
               <Button
                 variant="secondary"
+                size="md"
                 onClick={() => window.print()}
-                className="flex-1 font-semibold flex items-center justify-center gap-2"
+                className="flex-1 font-bold flex items-center justify-center gap-1.5"
               >
                 <Printer className="w-4 h-4" />
-                <span>Print Receipt</span>
+                <span>Print</span>
               </Button>
               <Button
                 variant="primary"
+                size="md"
                 onClick={() => setCompletedSale(null)}
                 className="flex-1 font-bold"
               >
-                New Sale
+                New Order
               </Button>
             </div>
           </div>

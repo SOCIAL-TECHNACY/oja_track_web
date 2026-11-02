@@ -44,29 +44,40 @@ export default function RecentCommissions({
         </Link>
       </div>
 
-      <ul className="mt-4 space-y-3">
-        {items.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 dark:border-[#1e3a2b]"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-light-primary sm:text-[15px] dark:text-ink-primary">
-                {item.shopName}
-              </p>
-              <p className="mt-0.5 text-xs text-light-secondary sm:text-sm dark:text-ink-secondary">
-                {formatCommissionDate(item.dateISO)}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <TypePill type={item.type} />
-              <p className="text-sm font-bold whitespace-nowrap text-light-primary tabular-nums sm:text-base dark:text-ink-primary">
-                {formatNGN(item.amountNGN)}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-dashed border-border py-8 text-center dark:border-[#1e3a2b]">
+          <p className="text-sm font-medium text-light-secondary dark:text-ink-secondary">
+            No recent commission records yet.
+          </p>
+          <p className="mt-1 text-xs text-light-secondary/70 dark:text-ink-secondary/70">
+            Commissions will appear here as your onboarded shops log sales and renew subscriptions.
+          </p>
+        </div>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 dark:border-[#1e3a2b]"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-light-primary sm:text-[15px] dark:text-ink-primary">
+                  {item.shopName}
+                </p>
+                <p className="mt-0.5 text-xs text-light-secondary sm:text-sm dark:text-ink-secondary">
+                  {formatCommissionDate(item.dateISO)}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <TypePill type={item.type} />
+                <p className="text-sm font-bold whitespace-nowrap text-light-primary tabular-nums sm:text-base dark:text-ink-primary">
+                  {formatNGN(item.amountNGN)}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

@@ -39,7 +39,7 @@ export default function LeaderboardTable({
   standings: Record<LeaderboardPeriod, LeaderboardEntry[]>;
 }) {
   const [period, setPeriod] = useState<LeaderboardPeriod>("monthly");
-  const rows = standings[period];
+  const rows = standings[period] || [];
 
   return (
     <div>
@@ -158,6 +158,16 @@ export default function LeaderboardTable({
                   </td>
                 </tr>
               ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-12 text-center text-sm text-light-secondary dark:text-ink-secondary"
+                  >
+                    No agent standings recorded for this period yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

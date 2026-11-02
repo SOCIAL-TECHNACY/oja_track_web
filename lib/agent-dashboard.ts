@@ -1,8 +1,23 @@
-/*
- * Agent dashboard data contract.
- * Mock-first: `mockAgentOverview` mirrors the Figma screenshot so the
- * overview page can ship without a backend. Replace the mock import
- * with a fetch call later — types stay the same.
+/**
+ * ============================================================================
+ * OJATRACK AGENT OPERATIONS DATA CONTRACT & DEVELOPMENT FIXTURES
+ * ============================================================================
+ * 
+ * ARCHITECTURAL NOTICE (PHASE 2.2 HARDENING):
+ * 
+ * The mock constants exported in this file (mockAgentOverview, mockOnboardedShops,
+ * mockLeaderboard, mockShopRenewals, mockPayoutHistory, etc.) are STRICTLY
+ * DEVELOPMENT FIXTURES and test artifacts used for visual UI regression testing
+ * and storybook preview.
+ * 
+ * Production runtime pages MUST NEVER use these mock objects as live state defaults
+ * or silent error fallbacks. Authenticated views must always:
+ *   1. Initialize state with zeroed metrics / empty record arrays.
+ *   2. Render responsive loading skeletons while data is being retrieved.
+ *   3. Populate from live API client responses or verified IndexedDB offline cache.
+ *   4. Show informative, accessible empty states when genuine datasets are empty.
+ *   5. Display actionable error notifications with manual retry triggers on failure.
+ * ============================================================================
  */
 
 export type CommissionType = "First Sale" | "Recurring";

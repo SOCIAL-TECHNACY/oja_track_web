@@ -1,7 +1,22 @@
-/*
- * Admin dashboard data contract.
- * Mock-first, mirroring the agent-dashboard module: replace the mock
- * imports with fetch calls later — types stay the same.
+/**
+ * ============================================================================
+ * OJATRACK ADMIN COMMAND CENTER DATA CONTRACT & DEVELOPMENT FIXTURES
+ * ============================================================================
+ * 
+ * ARCHITECTURAL NOTICE (PHASE 2.2 HARDENING):
+ * 
+ * The mock constants exported in this file (mockAdminOverview, mockVerifiedAgents,
+ * mockSupervisedShops, mockWithdrawalRequests, etc.) are STRICTLY DEVELOPMENT
+ * FIXTURES and test artifacts used for visual UI regression testing.
+ * 
+ * Production runtime pages MUST NEVER use these mock objects as live state defaults
+ * or silent error fallbacks. Authenticated views must always:
+ *   1. Initialize state with zeroed metrics / empty record arrays.
+ *   2. Render responsive loading skeletons while data is being retrieved.
+ *   3. Populate from live API client responses or verified IndexedDB offline cache.
+ *   4. Show informative, accessible empty states when genuine datasets are empty.
+ *   5. Display actionable error notifications with manual retry triggers on failure.
+ * ============================================================================
  */
 
 import type { DashboardUser } from "@/app/components/dashboard/types";

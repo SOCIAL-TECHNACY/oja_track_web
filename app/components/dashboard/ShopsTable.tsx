@@ -5,7 +5,6 @@ import { SearchInput } from "../ui/Input";
 import {
   formatNGN,
   shopMatchesQuery,
-  TOTAL_SHOPS_COUNT,
   type OnboardedShop,
   type ShopStatus,
 } from "@/lib/agent-dashboard";
@@ -58,7 +57,7 @@ function FilterSelect({
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path
-            d="m4 6 4 4 4-4"
+            d="M4 6L8 10L12 6"
             stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
@@ -71,9 +70,8 @@ function FilterSelect({
 }
 
 /*
- * Client island for the My Shops page: search + status/location
- * filters + paginated table. The page itself stays server-rendered;
- * all interactive state lives here.
+ * Client island for the Onboarded Shops directory: search + status/
+ * location dropdowns + responsive table with pagination.
  */
 export default function ShopsTable({ shops }: { shops: OnboardedShop[] }) {
   const [query, setQuery] = useState("");
@@ -108,7 +106,7 @@ export default function ShopsTable({ shops }: { shops: OnboardedShop[] }) {
 
   const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(safePage * PAGE_SIZE, filtered.length);
-  const totalLabel = isUnfiltered ? TOTAL_SHOPS_COUNT : filtered.length;
+  const totalLabel = isUnfiltered ? shops.length : filtered.length;
 
   const pageButton =
     "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium transition-colors";
@@ -128,7 +126,7 @@ export default function ShopsTable({ shops }: { shops: OnboardedShop[] }) {
             }}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-2">
           <FilterSelect
             label="Status"
             value={status}
@@ -147,22 +145,13 @@ export default function ShopsTable({ shops }: { shops: OnboardedShop[] }) {
             }}
             options={locations}
           />
-          <button
-            type="button"
-            disabled
-            title="Coming soon"
-            aria-disabled="true"
-            className="inline-flex h-[41px] cursor-not-allowed items-center rounded-lg bg-brand-primary px-4 text-sm font-semibold text-white opacity-90"
-          >
-            + Onboard New Shop
-          </button>
         </div>
       </div>
 
       {/* Table card */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(16,24,20,0.04)] dark:bg-foundation-secondary dark:border-[#1e3a2b]">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border text-[13px] text-light-secondary dark:text-ink-secondary">
                 {[
@@ -175,7 +164,11 @@ export default function ShopsTable({ shops }: { shops: OnboardedShop[] }) {
                   "Commission",
                   "Last Active",
                 ].map((h) => (
-                  <th key={h} scope="col" className="px-4 py-3 font-medium first:pl-6 last:pr-6">
+                  <th
+                    key={h}
+                    scope="col"
+                    className="px-4 py-3 font-medium first:pl-6 last:pr-6"
+                  >
                     {h}
                   </th>
                 ))}
@@ -228,7 +221,9 @@ export default function ShopsTable({ shops }: { shops: OnboardedShop[] }) {
                     colSpan={8}
                     className="px-6 py-10 text-center text-sm text-light-secondary dark:text-ink-secondary"
                   >
-                    No shops match your search.
+                    {shops.length === 0
+                      ? "No shops onboarded yet. Use your agent referral code to register your first retail merchant."
+                      : "No shops match your search criteria."}
                   </td>
                 </tr>
               )}

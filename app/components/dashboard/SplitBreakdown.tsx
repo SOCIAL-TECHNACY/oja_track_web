@@ -13,33 +13,41 @@ export default function SplitBreakdown({ splits }: { splits: EarningSplit[] }) {
         Split Breakdown
       </h2>
 
-      <div className="mt-4 space-y-5">
-        {splits.map((s) => (
-          <div key={s.label}>
-            <div className="flex items-baseline justify-between gap-3 text-sm">
-              <p className="text-light-secondary dark:text-ink-secondary">
-                {s.label}
-              </p>
-              <p className="font-bold text-light-primary tabular-nums dark:text-ink-primary">
-                {s.percent}%
-              </p>
-            </div>
-            <div
-              role="progressbar"
-              aria-label={s.label}
-              aria-valuenow={s.percent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              className="mt-2 h-2.5 overflow-hidden rounded-full bg-surface dark:bg-foundation-elevated"
-            >
+      {splits.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-dashed border-border py-8 text-center dark:border-[#1e3a2b]">
+          <p className="text-sm text-light-secondary dark:text-ink-secondary">
+            No commission split data recorded yet.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-5">
+          {splits.map((s) => (
+            <div key={s.label}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <p className="text-light-secondary dark:text-ink-secondary">
+                  {s.label}
+                </p>
+                <p className="font-bold text-light-primary tabular-nums dark:text-ink-primary">
+                  {s.percent}%
+                </p>
+              </div>
               <div
-                className={`h-full rounded-full ${s.barClass}`}
-                style={{ width: `${s.percent}%` }}
-              />
+                role="progressbar"
+                aria-label={s.label}
+                aria-valuenow={s.percent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                className="mt-2 h-2.5 overflow-hidden rounded-full bg-surface dark:bg-foundation-elevated"
+              >
+                <div
+                  className={`h-full rounded-full ${s.barClass}`}
+                  style={{ width: `${s.percent}%` }}
+                />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

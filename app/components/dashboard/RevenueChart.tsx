@@ -6,7 +6,7 @@ import { formatNGN, type MonthlyRevenue } from "@/lib/agent-dashboard";
  * on color/height alone.
  */
 export default function RevenueChart({ data }: { data: MonthlyRevenue[] }) {
-  const max = Math.max(...data.map((d) => d.amountNGN));
+  const max = data.length > 0 ? Math.max(...data.map((d) => d.amountNGN), 1) : 1;
 
   return (
     <section
@@ -25,22 +25,30 @@ export default function RevenueChart({ data }: { data: MonthlyRevenue[] }) {
         </p>
       </div>
 
-      <div className="mt-6 flex h-48 items-end gap-3 sm:h-56 sm:gap-4">
-        {data.map((d) => (
-          <div key={d.month} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-            <div
-              role="img"
-              aria-label={`${d.month}: ${formatNGN(d.amountNGN)}`}
-              title={formatNGN(d.amountNGN)}
-              className="w-full max-w-12 rounded-t-md bg-brand-primary"
-              style={{ height: `${Math.round((d.amountNGN / max) * 100)}%` }}
-            />
-            <span className="text-xs text-light-secondary sm:text-sm dark:text-ink-secondary">
-              {d.month}
-            </span>
-          </div>
-        ))}
-      </div>
+      {data.length === 0 ? (
+        <div className="mt-6 flex h-48 sm:h-56 items-center justify-center rounded-xl border border-dashed border-border dark:border-[#1e3a2b]">
+          <p className="text-sm text-light-secondary dark:text-ink-secondary">
+            No historical monthly revenue recorded yet.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 flex h-48 items-end gap-3 sm:h-56 sm:gap-4">
+          {data.map((d) => (
+            <div key={d.month} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+              <div
+                role="img"
+                aria-label={`${d.month}: ${formatNGN(d.amountNGN)}`}
+                title={formatNGN(d.amountNGN)}
+                className="w-full max-w-12 rounded-t-md bg-brand-primary"
+                style={{ height: `${Math.max(6, Math.round((d.amountNGN / max) * 100))}%` }}
+              />
+              <span className="text-xs text-light-secondary sm:text-sm dark:text-ink-secondary">
+                {d.month}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

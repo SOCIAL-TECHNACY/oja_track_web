@@ -1,5 +1,17 @@
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3300/api/v1";
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const isProd = process.env.NODE_ENV === "production";
+
+/**
+ * Validates whether a valid public API URL is configured.
+ * In production environments, OjaTrack will NEVER silently fall back to localhost.
+ */
+export const IS_API_CONFIGURED = Boolean(rawApiUrl && rawApiUrl.length > 0);
+
+export const API_BASE = IS_API_CONFIGURED
+  ? (rawApiUrl as string).replace(/\/+$/, "")
+  : isProd
+    ? ""
+    : "http://localhost:3300/api/v1";
 
 export const ENDPOINTS = {
   // Auth

@@ -48,31 +48,38 @@ function HealthPill({ status }: { status: HealthStatus }) {
 
 /*
  * Command-center lower panels: real-time events + operational health.
- * Server-safe presentational components fed by lib/admin-dashboard mocks.
  */
 
 export function NetworkEvents({ events }: { events: NetworkEvent[] }) {
   return (
     <div className={card}>
       <h2 className={titleCls}>Real-time Network Events</h2>
-      <ul className="mt-4 space-y-4">
-        {events.map((e) => (
-          <li key={e.id} className="flex items-start justify-between gap-3">
-            <span className="flex min-w-0 items-start gap-2.5">
-              <span aria-hidden className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-primary" />
-              <span className="truncate text-sm text-light-primary sm:whitespace-normal dark:text-ink-primary">
-                {e.message}
+      {events.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-dashed border-border py-8 text-center dark:border-[#1e3a2b]">
+          <p className="text-xs text-light-secondary dark:text-ink-secondary">
+            No real-time network transactions or security alerts recorded.
+          </p>
+        </div>
+      ) : (
+        <ul className="mt-4 space-y-4">
+          {events.map((e) => (
+            <li key={e.id} className="flex items-start justify-between gap-3">
+              <span className="flex min-w-0 items-start gap-2.5">
+                <span aria-hidden className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-primary" />
+                <span className="truncate text-sm text-light-primary sm:whitespace-normal dark:text-ink-primary">
+                  {e.message}
+                </span>
               </span>
-            </span>
-            <span className="flex shrink-0 items-center gap-3">
-              <span className="hidden text-[13px] whitespace-nowrap text-light-secondary sm:inline dark:text-ink-secondary">
-                {e.timeAgo}
+              <span className="flex shrink-0 items-center gap-3">
+                <span className="hidden text-[13px] whitespace-nowrap text-light-secondary sm:inline dark:text-ink-secondary">
+                  {e.timeAgo}
+                </span>
+                <EventPill status={e.status} />
               </span>
-              <EventPill status={e.status} />
-            </span>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -81,21 +88,29 @@ export function OperationalHealth({ services }: { services: OperationalService[]
   return (
     <div className={card}>
       <h2 className={titleCls}>Operational Health</h2>
-      <ul className="mt-4 space-y-4">
-        {services.map((s) => (
-          <li key={s.id} className="flex items-start justify-between gap-3">
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-light-primary dark:text-ink-primary">
-                {s.name}
+      {services.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-dashed border-border py-8 text-center dark:border-[#1e3a2b]">
+          <p className="text-xs text-light-secondary dark:text-ink-secondary">
+            Service telemetry awaiting cluster diagnostics feed.
+          </p>
+        </div>
+      ) : (
+        <ul className="mt-4 space-y-4">
+          {services.map((s) => (
+            <li key={s.id} className="flex items-start justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-light-primary dark:text-ink-primary">
+                  {s.name}
+                </span>
+                <span className="mt-0.5 block text-[13px] text-light-muted">
+                  Latency: {s.latencyMs}ms
+                </span>
               </span>
-              <span className="mt-0.5 block text-[13px] text-light-muted">
-                Latency: {s.latencyMs}ms
-              </span>
-            </span>
-            <HealthPill status={s.status} />
-          </li>
-        ))}
-      </ul>
+              <HealthPill status={s.status} />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatNGN } from "@/lib/agent-dashboard";
 import {
   complianceFor,
-  mockWithdrawalRequests,
   type WithdrawalRequest,
   type WithdrawalStatus,
 } from "@/lib/admin-dashboard";
+import { getPlatformWithdrawalsApi, processWithdrawalApi } from "@/lib/api/platform";
 
 const card =
   "rounded-2xl border border-border bg-white p-5 shadow-[0_1px_2px_rgba(16,24,20,0.04)] dark:bg-foundation-secondary dark:border-[#1e3a2b]";
@@ -40,21 +40,71 @@ function DisbursalPill({ status }: { status: WithdrawalStatus }) {
 }
 
 /*
- * Withdrawal Clearance Terminal island: outstanding disbursals with a
- * live batch-approve action + selectable rows driving the balance
- * compliance panel. Individual Clear/Reject stay disabled placeholders.
+ * Withdrawal Clearance Terminal island: outstanding disbursals with
+ * live API synchronization + selectable rows driving the balance
+ * compliance panel.
  */
 export default function WithdrawalClearanceView() {
-  const [requests, setRequests] = useState<WithdrawalRequest[]>(mockWithdrawalRequests);
-  const [selectedId, setSelectedId] = useState(mockWithdrawalRequests[0]?.id ?? "");
+  const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
 
+  const loadWithdrawals = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getPlatformWithdrawalsApi();
+      if (res && res.success && Array.isArray((res as any).withdrawals)) {
+        const rawList = (res as any).withdrawals;
+        const mapped: WithdrawalRequest[] = rawList.map((w: any, idx: number) => {
+          let status: WithdrawalStatus = "PENDING";
+          if (w.status === "paid") status = "PAID";
+          else if (w.status === "processing") status = "PROCESSING";
+          else if (w.status === "rejected" || w.status === "cancelled") status = "REJECTED";
+
+          const agentName = w.agent?.user
+            ? `${w.agent.user.firstName || ""} ${w.agent.user.lastName || ""}`.trim()
+            : w.agentName || "Agent";
+          const initials = agentName.split(" ").map((s: string) => s[0]).join("").toUpperCase().slice(0, 2) || "AG";
+
+          return {
+            id: w.id || `w-${idx}`,
+            agentName,
+            agentCode: w.agent?.agentCode || `AG-${String(idx + 1).padStart(3, "0")}`,
+            initials,
+            amountNGN: Number(w.amount) || 0,
+            bank: w.payoutDetails?.bank || w.bank || "Nigerian Commercial Bank",
+            accountNo: w.payoutDetails?.account_number || w.accountNo || "NUBAN-PENDING",
+            dateISO: w.requestedAt
+              ? new Date(w.requestedAt).toISOString().split("T")[0]
+              : new Date().toISOString().split("T")[0],
+            status,
+          };
+        });
+        setRequests(mapped);
+        if (mapped.length > 0) {
+          setSelectedId(mapped[0].id);
+        }
+      } else {
+        setRequests([]);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to load withdrawal clearance queue from central server.");
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
+    loadWithdrawals();
     return () => {
       if (timer.current) window.clearTimeout(timer.current);
     };
-  }, []);
+  }, [loadWithdrawals]);
 
   const actionable = useMemo(
     () => requests.filter((r) => r.status === "PENDING" || r.status === "PROCESSING"),
@@ -70,21 +120,57 @@ export default function WithdrawalClearanceView() {
     timer.current = window.setTimeout(() => setToast(null), 3200);
   }
 
-  function batchApprove() {
+  async function batchApprove() {
     const n = actionable.length;
     if (n === 0) return;
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.status === "PENDING" || r.status === "PROCESSING"
-          ? { ...r, status: "PAID" as const }
-          : r,
-      ),
-    );
-    flash(`${n} disbursal${n === 1 ? "" : "s"} cleared for payout.`);
+    try {
+      await Promise.allSettled(
+        actionable.map((r) => processWithdrawalApi(r.id, "approve"))
+      );
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.status === "PENDING" || r.status === "PROCESSING"
+            ? { ...r, status: "PAID" as const }
+            : r,
+        ),
+      );
+      flash(`${n} disbursal${n === 1 ? "" : "s"} cleared for payout.`);
+    } catch {
+      flash("Batch approval partially processed. Refreshing clearance queue.");
+      loadWithdrawals();
+    }
   }
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-xl border border-warning/30 bg-warning/10 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-warning/20 dark:bg-warning/5"
+        >
+          <div className="flex items-start gap-3">
+            <span aria-hidden className="mt-0.5 text-warning font-bold">
+              ⚠
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-light-primary dark:text-ink-primary">
+                Clearance Terminal Sync Notice
+              </p>
+              <p className="text-xs text-light-secondary dark:text-ink-secondary">
+                {error}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={loadWithdrawals}
+            className="self-start sm:self-auto inline-flex h-8 items-center rounded-lg bg-white px-3 text-xs font-semibold text-light-primary border border-border shadow-xs hover:bg-surface dark:bg-foundation-secondary dark:text-ink-primary dark:border-[#1e3a2b]"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
+
       <div className="grid items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
         {/* Outstanding disbursals */}
         <div className={card}>
@@ -94,7 +180,7 @@ export default function WithdrawalClearanceView() {
             </h2>
             <button
               type="button"
-              disabled={actionable.length === 0}
+              disabled={loading || actionable.length === 0}
               title={actionable.length === 0 ? "Nothing to clear" : `Approve ${actionable.length} disbursals`}
               onClick={batchApprove}
               className="inline-flex h-10 items-center rounded-xl bg-brand-primary px-4 text-sm font-bold text-white transition-colors hover:bg-success-hover disabled:cursor-not-allowed disabled:opacity-50"
@@ -122,47 +208,67 @@ export default function WithdrawalClearanceView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {requests.map((r) => {
-                    const isSelected = r.id === selected?.id;
-                    return (
-                      <tr
-                        key={r.id}
-                        onClick={() => setSelectedId(r.id)}
-                        className={`cursor-pointer border-b border-border transition-colors last:border-0 dark:border-[#1e3a2b] ${
-                          isSelected
-                            ? "bg-surface dark:bg-foundation-elevated"
-                            : "hover:bg-surface/60 dark:hover:bg-foundation-elevated/50"
-                        }`}
-                      >
-                        <th
-                          scope="row"
-                          className="px-4 py-3.5 font-bold whitespace-nowrap text-light-primary first:pl-5 dark:text-ink-primary"
-                        >
-                          <button
-                            type="button"
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center">
+                        <div className="h-20 animate-pulse rounded-lg bg-neutral-100 dark:bg-foundation-secondary" />
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {requests.map((r) => {
+                        const isSelected = r.id === selected?.id;
+                        return (
+                          <tr
+                            key={r.id}
                             onClick={() => setSelectedId(r.id)}
-                            aria-pressed={isSelected}
-                            aria-label={`Inspect ${r.agentName} withdrawal`}
-                            className="hover:underline"
+                            className={`cursor-pointer border-b border-border transition-colors last:border-0 dark:border-[#1e3a2b] ${
+                              isSelected
+                                ? "bg-surface dark:bg-foundation-elevated"
+                                : "hover:bg-surface/60 dark:hover:bg-foundation-elevated/50"
+                            }`}
                           >
-                            {r.agentName}
-                          </button>
-                        </th>
-                        <td className="px-4 py-3.5 font-bold whitespace-nowrap text-brand-primary tabular-nums">
-                          {formatNGN(r.amountNGN)}
-                        </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap text-light-secondary dark:text-ink-secondary">
-                          {r.bank}
-                        </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap text-light-secondary tabular-nums dark:text-ink-secondary">
-                          {r.accountNo}
-                        </td>
-                        <td className="px-4 py-3.5 last:pr-5">
-                          <DisbursalPill status={r.status} />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                            <th
+                              scope="row"
+                              className="px-4 py-3.5 font-bold whitespace-nowrap text-light-primary first:pl-5 dark:text-ink-primary"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setSelectedId(r.id)}
+                                aria-pressed={isSelected}
+                                aria-label={`Inspect ${r.agentName} withdrawal`}
+                                className="hover:underline"
+                              >
+                                {r.agentName}
+                              </button>
+                            </th>
+                            <td className="px-4 py-3.5 font-bold whitespace-nowrap text-brand-primary tabular-nums">
+                              {formatNGN(r.amountNGN)}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap text-light-secondary dark:text-ink-secondary">
+                              {r.bank}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap text-light-secondary tabular-nums dark:text-ink-secondary">
+                              {r.accountNo}
+                            </td>
+                            <td className="px-4 py-3.5 last:pr-5">
+                              <DisbursalPill status={r.status} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {requests.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={5}
+                            className="px-6 py-12 text-center text-sm text-light-secondary dark:text-ink-secondary"
+                          >
+                            No withdrawal requests currently pending clearance.
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -249,7 +355,16 @@ export default function WithdrawalClearanceView() {
               </button>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div className={card} aria-live="polite">
+            <h2 className="text-lg font-bold text-light-primary dark:text-ink-primary">
+              Balance Compliance Verification
+            </h2>
+            <div className="py-12 text-center text-sm text-light-secondary dark:text-ink-secondary">
+              Select an outstanding disbursal from the clearance table to inspect compliance metrics.
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Toast */}
