@@ -1,3 +1,4 @@
+export { default as BrandLogo } from "./BrandLogo";
 export { default as Button } from "./Button";
 export type { ButtonVariant } from "./Button";
 export { Input, PinInput, SearchInput, SelectInput } from "./Input";

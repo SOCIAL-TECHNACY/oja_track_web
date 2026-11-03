@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, KeyRound } from "lucide-react";
 import { forgotPasswordApi } from "@/lib/api/auth";
@@ -45,9 +46,7 @@ export default function ForgotPasswordPage() {
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Login</span>
         </Link>
-        <Link href="/" className="font-extrabold text-lg text-foreground">
-          Oja<span className="text-brand-primary">Track</span>
-        </Link>
+        <BrandLogo size="sm" />
       </div>
 
       <div className="max-w-md w-full mx-auto my-auto py-8">

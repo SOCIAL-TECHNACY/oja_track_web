@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Users } from "lucide-react";
 import { registerAgentApi } from "@/lib/api/auth";
@@ -94,9 +95,7 @@ export default function AgentRegisterPage() {
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Agent Login</span>
         </Link>
-        <Link href="/" className="font-extrabold text-lg text-foreground">
-          Oja<span className="text-brand-primary">Track</span>
-        </Link>
+        <BrandLogo size="sm" />
       </div>
 
       {/* Main Registration Form */}

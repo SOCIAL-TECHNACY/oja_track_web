@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -52,9 +53,7 @@ function AgentLoginForm() {
           <ArrowLeft className="w-4 h-4" />
           <span>Gateway choice</span>
         </Link>
-        <Link href="/" className="font-extrabold text-lg text-foreground">
-          Oja<span className="text-brand-primary">Track</span>
-        </Link>
+        <BrandLogo size="sm" />
       </div>
 
       {/* Main Card */}

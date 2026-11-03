@@ -17,6 +17,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OjaTrack — The Operating System for Nigerian Retail",
   description: "Eliminate inventory leaks, reconcile offline sales in real time, and scale profit with verified field agents.",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

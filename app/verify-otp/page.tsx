@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CheckCircle, Mail, RotateCw } from "lucide-react";
 import { verifyOtpApi, resendOtpApi } from "@/lib/api/auth";
@@ -84,9 +85,7 @@ function VerifyOtpForm() {
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Login</span>
         </Link>
-        <Link href="/" className="font-extrabold text-lg text-foreground">
-          Oja<span className="text-brand-primary">Track</span>
-        </Link>
+        <BrandLogo size="sm" />
       </div>
 
       {/* Main OTP Card */}

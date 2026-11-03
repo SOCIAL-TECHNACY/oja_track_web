@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 import type { DashboardNavItem, DashboardUser } from "./types";
 
 /*
@@ -29,28 +30,7 @@ export default function DashboardSidebar({
   return (
     <div className="flex h-full flex-col">
       <div className="px-5 pt-6">
-        <Link
-          href={homeHref}
-          aria-label={homeLabel}
-          className="flex items-center gap-2 rounded-lg"
-        >
-          <span
-            aria-hidden
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-primary text-base font-extrabold text-foundation-base"
-          >
-            O
-          </span>
-          <span className="leading-none">
-            <span className="block text-lg font-extrabold tracking-tight text-light-primary dark:text-ink-primary">
-              OJA-Track
-            </span>
-            {eyebrow ? (
-              <span className="mt-0.5 block text-[11px] font-bold tracking-[0.14em] text-brand-primary uppercase">
-                {eyebrow}
-              </span>
-            ) : null}
-          </span>
-        </Link>
+        <BrandLogo href={homeHref} size="lg" eyebrow={eyebrow} onClick={onNavigate} />
       </div>
 
       <nav aria-label={navAriaLabel} className="mt-6 flex-1 space-y-1 px-3">

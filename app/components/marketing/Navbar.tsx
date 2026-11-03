@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { authNav, mainNav } from "@/lib/site";
 import type { NavLink } from "@/lib/site";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 
 function NavItem({ link, onNavigate }: { link: NavLink; onNavigate?: () => void }) {
   const cls =
@@ -29,14 +30,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-        <Link href="/" aria-label="OjaTrack home" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg">
-          <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-primary text-sm font-extrabold text-foundation-base">
-            O
-          </span>
-          <span className="text-base font-extrabold text-light-primary dark:text-ink-primary">
-            OjaTrack
-          </span>
-        </Link>
+        <BrandLogo size="md" onClick={() => setOpen(false)} />
         <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
           {mainNav.map((l) => (
             <NavItem key={l.label} link={l} />

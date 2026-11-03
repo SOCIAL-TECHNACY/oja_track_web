@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 import { footerCols } from "@/lib/site";
 
 /* Dark marketing footer. Dead links render as plain text (no 404s). */
@@ -7,12 +8,7 @@ export default function Footer() {
     <footer className="bg-foundation-base text-ink-secondary">
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-6 py-12 md:grid-cols-[1.2fr_1fr_1fr_1fr]">
         <div>
-          <Link href="/" aria-label="OjaTrack home" className="flex w-fit items-center gap-2 rounded-lg">
-            <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-primary text-sm font-extrabold text-foundation-base">
-              O
-            </span>
-            <span className="text-base font-extrabold text-white">OjaTrack</span>
-          </Link>
+          <BrandLogo size="md" />
           <p className="mt-3 max-w-xs text-[13px] leading-5">
             Nigeria&apos;s retail operations platform. Track sales, inventory,
             and profit in real time.

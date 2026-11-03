@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Store } from "lucide-react";
 import { registerOrgApi } from "@/lib/api/auth";
@@ -102,9 +103,7 @@ export default function ShopRegisterPage() {
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Shop Login</span>
         </Link>
-        <Link href="/" className="font-extrabold text-lg text-foreground">
-          Oja<span className="text-brand-primary">Track</span>
-        </Link>
+        <BrandLogo size="sm" />
       </div>
 
       {/* Main Registration Form */}

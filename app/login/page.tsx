@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 import { ArrowRight, Shield, Store, Users } from "lucide-react";
 import Button from "@/app/components/ui/Button";
 
@@ -9,14 +10,7 @@ export default function LoginGatewayPage() {
     <div className="min-h-screen bg-surface flex flex-col justify-between p-4 sm:p-8">
       {/* Top Header */}
       <div className="max-w-6xl w-full mx-auto flex items-center justify-between py-4">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 rounded-xl bg-brand-primary flex items-center justify-center font-black text-black text-xl shadow-md group-hover:scale-105 transition-transform">
-            O
-          </div>
-          <span className="font-extrabold text-xl tracking-tight text-foreground">
-            Oja<span className="text-brand-primary">Track</span>
-          </span>
-        </Link>
+        <BrandLogo size="lg" />
         <Link
           href="/"
           className="text-sm font-semibold text-secondary-text hover:text-foreground transition-colors"
