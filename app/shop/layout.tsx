@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { getPendingSalesCount } from "@/lib/offline/sync-manager";
 import ThemeToggle from "@/app/components/ui/ThemeToggle";
 import Badge from "@/app/components/ui/Badge";
+import BrandLogo from "@/app/components/ui/BrandLogo";
 
 export default function ShopLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -117,18 +118,8 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-background p-5 justify-between shrink-0">
         <div>
           {/* Shop Brand Header */}
-          <div className="flex items-center gap-3 pb-6 border-b border-border">
-            <div className="w-10 h-10 rounded-2xl bg-brand-primary flex items-center justify-center font-black text-black text-xl shadow-sm">
-              O
-            </div>
-            <div>
-              <div className="font-extrabold text-lg text-foreground tracking-tight">
-                Oja<span className="text-brand-primary">Track</span>
-              </div>
-              <div className="text-[11px] font-semibold text-secondary-text uppercase tracking-wider">
-                Shop Operations
-              </div>
-            </div>
+          <div className="pb-6 border-b border-border">
+            <BrandLogo size="md" eyebrow="Shop Operations" href="/shop/dashboard" />
           </div>
 
           {/* Current Shop & Branch Pill */}
@@ -259,6 +250,9 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-background border-b border-border p-4 space-y-1 animate-in slide-in-from-top-2">
+            <div className="pb-3 mb-2 border-b border-border">
+              <BrandLogo size="sm" eyebrow="Shop Operations" href="/shop/dashboard" onClick={() => setMobileMenuOpen(false)} />
+            </div>
             {visibleNav.map((item) => {
               const active = pathname === item.href;
               const Icon = item.icon;
