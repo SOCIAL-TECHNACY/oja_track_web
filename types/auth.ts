@@ -45,14 +45,23 @@ export interface RegisterOrgPayload {
   email: string;
   phone: string;
   password: string;
+  address?: string;
+  city: string;
+  state: string;
+  country?: string;
   organisation: {
     name: string;
+    city: string;
+    state: string;
     billing_email?: string;
+    billing_address?: string;
+    country?: string;
     tax_id?: string;
-    billing_address?: any;
+    referred_by?: string;
   };
   branch?: {
     name?: string;
+    code?: string;
     address?: string;
     city?: string;
     state?: string;
