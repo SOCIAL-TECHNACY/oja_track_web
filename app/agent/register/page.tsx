@@ -6,7 +6,7 @@ import BrandLogo from "@/app/components/ui/BrandLogo";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Users } from "lucide-react";
 import { registerAgentApi } from "@/lib/api/auth";
-import { Input } from "@/app/components/ui/Input";
+import { Input, PasswordInput } from "@/app/components/ui/Input";
 import Button from "@/app/components/ui/Button";
 
 export default function AgentRegisterPage() {
@@ -183,8 +183,7 @@ export default function AgentRegisterPage() {
                 <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
                   Password
                 </label>
-                <Input
-                  type="password"
+                <PasswordInput
                   name="password"
                   placeholder="Min 8 characters"
                   value={formData.password}
@@ -196,8 +195,7 @@ export default function AgentRegisterPage() {
                 <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
                   Confirm Password
                 </label>
-                <Input
-                  type="password"
+                <PasswordInput
                   name="confirmPassword"
                   placeholder="Repeat password"
                   value={formData.confirmPassword}

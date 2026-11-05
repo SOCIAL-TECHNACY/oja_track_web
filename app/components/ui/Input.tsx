@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useRef, type InputHTMLAttributes } from "react";
+import React, { useRef, useState, type InputHTMLAttributes } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   error?: boolean;
@@ -14,6 +15,34 @@ const base =
  * Default white / radius 8 / 14px text, focused green caret + ring,
  * error red ring. Specialty: search, select, 56px PIN cells.
  */
+
+export function PasswordInput({ error = false, className = "", ...props }: InputProps) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative w-full">
+      <Input
+        type={show ? "text" : "password"}
+        error={error}
+        className={`pr-11 ${className}`}
+        {...props}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setShow((prev) => !prev)}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center p-1.5 rounded-lg text-secondary-text hover:text-foreground active:text-brand-primary transition-colors focus:outline-none cursor-pointer"
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? (
+          <EyeOff className="w-5 h-5 shrink-0" aria-hidden="true" />
+        ) : (
+          <Eye className="w-5 h-5 shrink-0" aria-hidden="true" />
+        )}
+      </button>
+    </div>
+  );
+}
+
 export function Input({ error = false, className = "", ...props }: InputProps) {
   return (
     <input

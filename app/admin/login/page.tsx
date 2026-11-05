@@ -6,7 +6,7 @@ import BrandLogo from "@/app/components/ui/BrandLogo";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Shield } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { Input } from "@/app/components/ui/Input";
+import { Input, PasswordInput } from "@/app/components/ui/Input";
 import Button from "@/app/components/ui/Button";
 
 export default function AdminLoginPage() {
@@ -100,8 +100,7 @@ export default function AdminLoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Input
-                type="password"
+              <PasswordInput
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

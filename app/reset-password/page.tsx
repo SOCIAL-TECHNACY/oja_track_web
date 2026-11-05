@@ -6,7 +6,7 @@ import BrandLogo from "@/app/components/ui/BrandLogo";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Lock } from "lucide-react";
 import { resetPasswordApi } from "@/lib/api/auth";
-import { Input, PinInput } from "@/app/components/ui/Input";
+import { Input, PasswordInput, PinInput } from "@/app/components/ui/Input";
 import Button from "@/app/components/ui/Button";
 
 function ResetPasswordForm() {
@@ -122,8 +122,7 @@ function ResetPasswordForm() {
               <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
                 New Password
               </label>
-              <Input
-                type="password"
+              <PasswordInput
                 placeholder="Uppercase, lowercase, number"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -135,8 +134,7 @@ function ResetPasswordForm() {
               <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
                 Confirm New Password
               </label>
-              <Input
-                type="password"
+              <PasswordInput
                 placeholder="Repeat new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}

@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import BrandLogo from "@/app/components/ui/BrandLogo";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Eye, EyeOff, Store } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Store } from "lucide-react";
 import { registerOrgApi } from "@/lib/api/auth";
-import { Input } from "@/app/components/ui/Input";
+import { Input, PasswordInput } from "@/app/components/ui/Input";
 import Button from "@/app/components/ui/Button";
 
 export default function ShopRegisterPage() {
@@ -26,8 +26,7 @@ export default function ShopRegisterPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,49 +206,25 @@ export default function ShopRegisterPage() {
                   <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
                     Create Password
                   </label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Min 8 characters"
-                      value={formData.password}
-                      onChange={handleChange}
-                      className="pr-10"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-text hover:text-foreground transition-colors p-1"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+                  <PasswordInput
+                    name="password"
+                    placeholder="Min 8 characters"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-secondary-text uppercase mb-1">
                     Confirm Password
                   </label>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      name="confirmPassword"
-                      placeholder="Repeat password"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      className="pr-10"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword((prev) => !prev)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-text hover:text-foreground transition-colors p-1"
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+                  <PasswordInput
+                    name="confirmPassword"
+                    placeholder="Repeat password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                  />
                 </div>
               </div>
             </div>
