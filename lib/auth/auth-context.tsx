@@ -3,7 +3,13 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { getMeApi, loginApi, logoutApi } from "@/lib/api/auth";
-import { setAccessToken, setOnUnauthorized } from "@/lib/api/client";
+import {
+  decodeJwtExpiry,
+  getAccessToken,
+  refreshAccessToken,
+  setAccessToken,
+  setOnUnauthorized,
+} from "@/lib/api/client";
 import { getDashboardRouteForRole, isRouteAllowed } from "./route-utils";
 import type { AuthContextUser, SafeUser, UserRole } from "@/types/auth";
 
@@ -61,13 +67,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     async function initSession() {
-      // If we previously had an active session flag, try silent restore
-      const hasActiveSession = typeof window !== "undefined" && sessionStorage.getItem("ojatrack_at_active");
-      if (hasActiveSession) {
+      const hasStoredToken =
+        typeof window !== "undefined" && localStorage.getItem("ojatrack_access_token");
+      const hasActiveSession =
+        typeof window !== "undefined" && sessionStorage.getItem("ojatrack_at_active");
+
+      if (hasStoredToken || hasActiveSession) {
         try {
+          const token = getAccessToken();
+          if (token) {
+            const expMs = decodeJwtExpiry(token);
+            // If token has already expired while inactive, silently rotate it
+            if (expMs && Date.now() >= expMs - 5000) {
+              await refreshAccessToken();
+            }
+          }
+
           const res = await getMeApi();
           if (res.success && res.user) {
             setUser(res.user);
+          } else {
+            setUser(null);
+            setAccessToken(null);
           }
         } catch {
           // Session expired or unauthenticated
@@ -79,6 +100,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     initSession();
+
+    // Browser debugging helper for Martins / Daniel to verify silent refresh on demand
+    if (typeof window !== "undefined") {
+      (window as any).__ojatrack_test_expiry = async () => {
+        console.log(
+          "%c[OjaTrack Test] Testing Token Expiration & Silent Refresh...",
+          "color: #00c853; font-weight: bold;"
+        );
+        console.log("[1] Invalidating access token in memory with expired timestamp...");
+        setAccessToken(
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InRlc3QtZXhwaXJlZCIsImV4cCI6MTcwMDAwMDAwMH0.test_signature"
+        );
+        console.log("[2] Calling /api/v1/auth/me to trigger 401 interception...");
+        try {
+          const res = await getMeApi();
+          console.log(
+            "%c[3] SUCCESS! Token was silently refreshed in the background without logging you out:",
+            "color: #00c853; font-weight: bold;",
+            res
+          );
+          return {
+            success: true,
+            message: "Token refreshed silently! User stayed logged in.",
+            user: res.user,
+          };
+        } catch (err: any) {
+          console.error("[OjaTrack Test] Refresh failed:", err);
+          return { success: false, error: err };
+        }
+      };
+    }
   }, []);
 
   // Route protection gate
@@ -120,19 +172,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const role = user?.role ?? null;
-  const isAuthenticated = !!user;
+  const logout = async () => {
+    await handleLogout();
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
         safeUser,
-        role,
-        isAuthenticated,
+        role: user?.role ?? null,
+        isAuthenticated: !!user,
         isLoading,
         login,
-        logout: handleLogout,
+        logout,
         refreshSession,
       }}
     >
@@ -141,9 +194,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useAuth(): AuthContextType {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;

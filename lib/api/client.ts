@@ -1,21 +1,81 @@
-import { API_BASE, ENDPOINTS, IS_API_CONFIGURED } from "./endpoints";
+import { API_BASE, BACKEND_DIRECT_URL, ENDPOINTS, IS_API_CONFIGURED } from "./endpoints";
 
 let inMemoryToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 let onUnauthorizedCallback: (() => void) | null = null;
+let proactiveTimer: any = null;
+
+export function decodeJwtExpiry(token: string): number | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const parsed = JSON.parse(jsonPayload);
+    return typeof parsed.exp === "number" ? parsed.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function scheduleProactiveRefresh(token: string) {
+  if (typeof window === "undefined") return;
+
+  if (proactiveTimer) {
+    clearTimeout(proactiveTimer);
+    proactiveTimer = null;
+  }
+
+  const expMs = decodeJwtExpiry(token);
+  if (!expMs) return;
+
+  const now = Date.now();
+  // Refresh 2 minutes (120,000ms) before token expiry, or in 15 seconds if close
+  const triggerIn = Math.max(expMs - now - 120000, 15000);
+
+  proactiveTimer = window.setTimeout(async () => {
+    try {
+      await refreshAccessToken();
+    } catch {
+      // Handled internally in refreshAccessToken
+    }
+  }, triggerIn);
+}
 
 export function setAccessToken(token: string | null) {
   inMemoryToken = token;
+
   if (typeof window !== "undefined") {
+    if (proactiveTimer) {
+      clearTimeout(proactiveTimer);
+      proactiveTimer = null;
+    }
+
     if (token) {
+      localStorage.setItem("ojatrack_access_token", token);
       sessionStorage.setItem("ojatrack_at_active", "1");
+      scheduleProactiveRefresh(token);
     } else {
+      localStorage.removeItem("ojatrack_access_token");
       sessionStorage.removeItem("ojatrack_at_active");
     }
   }
 }
 
 export function getAccessToken(): string | null {
+  if (!inMemoryToken && typeof window !== "undefined") {
+    const stored = localStorage.getItem("ojatrack_access_token");
+    if (stored) {
+      inMemoryToken = stored;
+      scheduleProactiveRefresh(stored);
+    }
+  }
   return inMemoryToken;
 }
 
@@ -39,23 +99,35 @@ export class ApiError extends Error {
   }
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   if (refreshPromise) {
     return refreshPromise;
   }
 
-  if (process.env.NODE_ENV === "production" && !IS_API_CONFIGURED) {
-    setAccessToken(null);
-    return null;
-  }
-
   refreshPromise = (async () => {
     try {
-      const res = await fetch(ENDPOINTS.AUTH.REFRESH, {
+      // 1. Primary attempt: relative /api/v1/auth/refresh proxying through Next.js
+      let res = await fetch(ENDPOINTS.AUTH.REFRESH, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // Transmits httpOnly refreshToken cookie
+        credentials: "include",
       });
+
+      // 2. Direct fallback attempt if relative route failed
+      if (!res.ok && ENDPOINTS.AUTH.REFRESH.startsWith("/")) {
+        try {
+          const directRes = await fetch(`${BACKEND_DIRECT_URL}/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          });
+          if (directRes.ok) {
+            res = directRes;
+          }
+        } catch {
+          // Keep primary res
+        }
+      }
 
       if (!res.ok) {
         setAccessToken(null);
@@ -67,6 +139,7 @@ async function refreshAccessToken(): Promise<string | null> {
         setAccessToken(data.accessToken);
         return data.accessToken;
       }
+
       setAccessToken(null);
       return null;
     } catch {
@@ -95,13 +168,23 @@ export async function apiClient<T = unknown>(
 
   const { skipAuth = false, headers = {}, ...rest } = options;
 
+  let currentToken = getAccessToken();
+
+  // If token is already known to be expired, refresh it before dispatching
+  if (!skipAuth && currentToken) {
+    const expMs = decodeJwtExpiry(currentToken);
+    if (expMs && Date.now() >= expMs - 5000) {
+      currentToken = await refreshAccessToken();
+    }
+  }
+
   const requestHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...(headers as Record<string, string>),
   };
 
-  if (!skipAuth && inMemoryToken) {
-    requestHeaders["Authorization"] = `Bearer ${inMemoryToken}`;
+  if (!skipAuth && currentToken) {
+    requestHeaders["Authorization"] = `Bearer ${currentToken}`;
   }
 
   let response: Response;

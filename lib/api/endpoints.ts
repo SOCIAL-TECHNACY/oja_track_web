@@ -7,11 +7,20 @@ const isProd = process.env.NODE_ENV === "production";
  */
 export const IS_API_CONFIGURED = Boolean(rawApiUrl && rawApiUrl.length > 0);
 
-export const API_BASE = IS_API_CONFIGURED
+export const BACKEND_DIRECT_URL = IS_API_CONFIGURED
   ? (rawApiUrl as string).replace(/\/+$/, "")
-  : isProd
-    ? ""
-    : "http://localhost:3300/api/v1";
+  : "https://oja-track-server.onrender.com/api/v1";
+
+/**
+ * In browser environments, API_BASE routes through "/api/v1" via Next.js proxy rewrites.
+ * This guarantees that session cookies (httpOnly refreshToken with SameSite=Lax) are treated
+ * as same-origin by the browser, preventing cookie blocking on silent token rotation.
+ * In server-side SSR contexts, it falls back to the backend direct URL.
+ */
+export const API_BASE =
+  typeof window !== "undefined"
+    ? "/api/v1"
+    : BACKEND_DIRECT_URL;
 
 export const ENDPOINTS = {
   // Auth
